@@ -86,12 +86,23 @@ async function startServer() {
   });
   // Debug endpoint to verify auth
   app.get("/api/debug/auth", async (req, res) => {
-    try {
-      const user = await sdk.authenticateRequest(req);
-      res.json({ user: { name: user.name, role: user.role, openId: user.openId } });
-    } catch (error) {
-      res.json({ error: (error as Error).message, cookie: req.headers.cookie });
+    const cookies = req.headers.cookie;
+    const parsed = {};
+    if (cookies) {
+      cookies.split(";").forEach(c => {
+        const [k, ...v] = c.trim().split("=");
+        parsed[k] = v.join("=");
+      });
     }
+    const token = parsed[COOKIE_NAME];
+    res.json({
+      hasCookie: !!token,
+      tokenLength: token ? token.length : 0,
+      cookieHeader: cookies ? cookies.substring(0, 80) : null,
+      appId: ENV.appId,
+      cookieSecretSet: !!ENV.cookieSecret,
+      cookieSecretLength: ENV.cookieSecret.length,
+    });
   });
   // tRPC API
   app.use(
