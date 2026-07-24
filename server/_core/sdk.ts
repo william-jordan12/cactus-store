@@ -287,13 +287,13 @@ class SDKServer {
 
     const sessionUserId = session.openId;
     const signedInAt = new Date();
-    let user = await db.getUserByOpenId(sessionUserId);
 
-    if (!user) {
-      // Password-based admin: build a synthetic user from the JWT session
-      // so auth works even if the DB is unavailable.
-      if (sessionUserId === "admin-password-user") {
-        try {
+    // Password-based admin: return immediately, no DB needed for auth
+    if (sessionUserId === "admin-password-user") {
+      let user = null;
+      try {
+        user = await db.getUserByOpenId(sessionUserId);
+        if (!user) {
           await db.upsertUser({
             openId: sessionUserId,
             name: session.name || "Admin",
@@ -301,29 +301,37 @@ class SDKServer {
             lastSignedIn: signedInAt,
           });
           user = await db.getUserByOpenId(sessionUserId);
-        } catch {
-          // DB unavailable — fall through to synthetic user
         }
-
-        if (!user) {
-          const now = new Date();
-          user = {
-            id: -1,
-            openId: sessionUserId,
-            name: session.name || "Admin",
-            email: null,
-            loginMethod: null,
-            role: "admin",
-            createdAt: now,
-            updatedAt: now,
-            lastSignedIn: now,
-          } as User;
-        }
+      } catch {
+        // DB unavailable — that's fine for password login
       }
+
+      if (!user) {
+        const now = new Date();
+        user = {
+          id: -1,
+          openId: sessionUserId,
+          name: session.name || "Admin",
+          email: null,
+          loginMethod: null,
+          role: "admin",
+          createdAt: now,
+          updatedAt: now,
+          lastSignedIn: now,
+        } as User;
+      }
+
+      return user;
+    }
+
+    let user = null;
+    try {
+      user = await db.getUserByOpenId(sessionUserId);
+    } catch {
+      user = undefined;
     }
 
     if (!user) {
-      // Try OAuth sync as fallback
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
         await db.upsertUser({
