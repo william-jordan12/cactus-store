@@ -9,6 +9,11 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerStripeWebhook } from "../stripeWebhook";
+import { ENV } from "./env";
+import { sdk } from "./sdk";
+import * as db from "../db";
+import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const";
+import { getSessionCookieOptions } from "./cookies";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,6 +44,38 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+
+  // Simple password-based admin login
+  app.post("/api/admin/login", express.json(), async (req, res) => {
+    try {
+      const { password } = req.body;
+      if (!ENV.adminPassword) {
+        res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
+        return;
+      }
+      if (password !== ENV.adminPassword) {
+        res.status(401).json({ error: "Invalid password" });
+        return;
+      }
+      const openId = "admin-password-user";
+      await db.upsertUser({
+        openId,
+        name: "Admin",
+        role: "admin",
+        lastSignedIn: new Date(),
+      });
+      const sessionToken = await sdk.createSessionToken(openId, {
+        name: "Admin",
+        expiresInMs: ONE_YEAR_MS,
+      });
+      const cookieOptions = getSessionCookieOptions(req);
+      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Admin Login] Failed", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
   // tRPC API
   app.use(
     "/api/trpc",
