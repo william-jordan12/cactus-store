@@ -84,26 +84,6 @@ async function startServer() {
       res.status(500).json({ error: "Login failed: " + (error as Error).message });
     }
   });
-  // Debug endpoint to verify auth
-  app.get("/api/debug/auth", async (req, res) => {
-    const cookies = req.headers.cookie;
-    const parsed = {};
-    if (cookies) {
-      cookies.split(";").forEach(c => {
-        const [k, ...v] = c.trim().split("=");
-        parsed[k] = v.join("=");
-      });
-    }
-    const token = parsed[COOKIE_NAME];
-    res.json({
-      hasCookie: !!token,
-      tokenLength: token ? token.length : 0,
-      cookieHeader: cookies ? cookies.substring(0, 80) : null,
-      appId: ENV.appId,
-      cookieSecretSet: !!ENV.cookieSecret,
-      cookieSecretLength: ENV.cookieSecret.length,
-    });
-  });
   // tRPC API
   app.use(
     "/api/trpc",
