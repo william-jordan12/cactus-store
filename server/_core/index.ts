@@ -84,6 +84,15 @@ async function startServer() {
       res.status(500).json({ error: "Login failed: " + (error as Error).message });
     }
   });
+  // Debug endpoint to verify auth
+  app.get("/api/debug/auth", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      res.json({ user: { name: user.name, role: user.role, openId: user.openId } });
+    } catch (error) {
+      res.json({ error: (error as Error).message, cookie: req.headers.cookie });
+    }
+  });
   // tRPC API
   app.use(
     "/api/trpc",
