@@ -26,7 +26,7 @@ export async function getDb() {
       const mysql = await import("mysql2/promise");
       const conn = await mysql.createConnection({
         uri: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: true },
+        ssl: { rejectUnauthorized: false },
       });
       _db = drizzle(conn);
     } catch (error) {
