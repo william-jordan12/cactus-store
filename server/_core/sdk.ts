@@ -289,8 +289,21 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
     if (!user) {
+      // Password-based login: create user in DB if not found
+      if (sessionUserId === "admin-password-user") {
+        await db.upsertUser({
+          openId: sessionUserId,
+          name: session.name || "Admin",
+          role: "admin",
+          lastSignedIn: signedInAt,
+        });
+        user = await db.getUserByOpenId(sessionUserId);
+      }
+    }
+
+    if (!user) {
+      // Try OAuth sync as fallback
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
         await db.upsertUser({
@@ -302,8 +315,7 @@ class SDKServer {
         });
         user = await db.getUserByOpenId(userInfo.openId);
       } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
+        console.error("[Auth] OAuth sync skipped:", error.message);
       }
     }
 

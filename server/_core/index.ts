@@ -58,12 +58,16 @@ async function startServer() {
         return;
       }
       const openId = "admin-password-user";
-      await db.upsertUser({
-        openId,
-        name: "Admin",
-        role: "admin",
-        lastSignedIn: new Date(),
-      });
+      try {
+        await db.upsertUser({
+          openId,
+          name: "Admin",
+          role: "admin",
+          lastSignedIn: new Date(),
+        });
+      } catch (dbErr) {
+        console.warn("[Admin Login] DB upsert failed (continuing):", dbErr);
+      }
       const sessionToken = await sdk.createSessionToken(openId, {
         name: "Admin",
         expiresInMs: ONE_YEAR_MS,
