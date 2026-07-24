@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1784884140710,
+      "tag": "0000_normal_changeling",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1784884300085,
+      "tag": "0001_even_vector",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1784889788409,
+      "tag": "0002_colossal_blizzard",
+      "breakpoints": true
+    }
+  ]
+}
