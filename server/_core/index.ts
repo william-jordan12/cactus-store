@@ -57,6 +57,10 @@ async function startServer() {
         res.status(401).json({ error: "Invalid password" });
         return;
       }
+      if (!ENV.cookieSecret) {
+        res.status(500).json({ error: "JWT_SECRET not configured" });
+        return;
+      }
       const openId = "admin-password-user";
       try {
         await db.upsertUser({
@@ -77,7 +81,7 @@ async function startServer() {
       res.json({ success: true });
     } catch (error) {
       console.error("[Admin Login] Failed", error);
-      res.status(500).json({ error: "Login failed" });
+      res.status(500).json({ error: "Login failed: " + (error as Error).message });
     }
   });
   // tRPC API
