@@ -290,15 +290,35 @@ class SDKServer {
     let user = await db.getUserByOpenId(sessionUserId);
 
     if (!user) {
-      // Password-based login: create user in DB if not found
+      // Password-based admin: build a synthetic user from the JWT session
+      // so auth works even if the DB is unavailable.
       if (sessionUserId === "admin-password-user") {
-        await db.upsertUser({
-          openId: sessionUserId,
-          name: session.name || "Admin",
-          role: "admin",
-          lastSignedIn: signedInAt,
-        });
-        user = await db.getUserByOpenId(sessionUserId);
+        try {
+          await db.upsertUser({
+            openId: sessionUserId,
+            name: session.name || "Admin",
+            role: "admin",
+            lastSignedIn: signedInAt,
+          });
+          user = await db.getUserByOpenId(sessionUserId);
+        } catch {
+          // DB unavailable — fall through to synthetic user
+        }
+
+        if (!user) {
+          const now = new Date();
+          user = {
+            id: -1,
+            openId: sessionUserId,
+            name: session.name || "Admin",
+            email: null,
+            loginMethod: null,
+            role: "admin",
+            createdAt: now,
+            updatedAt: now,
+            lastSignedIn: now,
+          } as User;
+        }
       }
     }
 
