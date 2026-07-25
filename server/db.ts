@@ -31,11 +31,13 @@ export async function getDb() {
       _db = drizzle(conn);
       // Auto-migrate: add images column if missing
       try {
-        await conn.execute("ALTER TABLE products ADD COLUMN `images` TEXT");
-        console.log("[Database] Added 'images' column to products table");
+        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'images'");
+        if ((cols as any[]).length === 0) {
+          await conn.execute("ALTER TABLE products ADD COLUMN `images` TEXT AFTER `imageUrl`");
+          console.log("[Database] Added 'images' column to products table");
+        }
       } catch (e: any) {
-        // Column already exists — ignore Duplicate column error
-        if (e?.code !== "ER_DUP_FIELDNAME") console.warn("[Database] ALTER products:", e?.message);
+        console.warn("[Database] images column migration:", e?.message);
       }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -167,14 +169,32 @@ export async function getProductById(id: number) {
 export async function createProduct(data: InsertProduct) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(products).values(data);
-  return result.insertId;
+  try {
+    const [result] = await db.insert(products).values(data);
+    return result.insertId;
+  } catch (e: any) {
+    if (e?.code === "ER_BAD_FIELD_ERROR" && "images" in data) {
+      const { images, ...rest } = data;
+      const [result] = await db.insert(products).values(rest as any);
+      return result.insertId;
+    }
+    throw e;
+  }
 }
 
 export async function updateProduct(id: number, data: Partial<InsertProduct>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(products).set(data).where(eq(products.id, id));
+  try {
+    await db.update(products).set(data).where(eq(products.id, id));
+  } catch (e: any) {
+    if (e?.code === "ER_BAD_FIELD_ERROR" && "images" in data) {
+      const { images, ...rest } = data;
+      await db.update(products).set(rest as any).where(eq(products.id, id));
+    } else {
+      throw e;
+    }
+  }
 }
 
 export async function deleteProduct(id: number) {
