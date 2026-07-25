@@ -1,6 +1,8 @@
 import StoreLayout from "@/components/StoreLayout";
+import { useSeo } from "@/lib/seo";
 
 export default function Terms() {
+  useSeo({ title: "Terms & Conditions", description: "Terms and conditions for ordering from Peyote Seeds Farm. Read before placing an order.", canonical: "/terms" });
   return (
     <StoreLayout>
       <section className="bg-[oklch(0.22_0.04_155)] text-white py-20">

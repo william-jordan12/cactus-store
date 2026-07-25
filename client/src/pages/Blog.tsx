@@ -1,6 +1,7 @@
 import StoreLayout from "@/components/StoreLayout";
 import { Calendar, Clock, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import { useSeo } from "@/lib/seo";
 
 const posts = [
   {
@@ -56,6 +57,7 @@ const posts = [
 ];
 
 export default function Blog() {
+  useSeo({ title: "Blog", description: "Growing guides, plant care tips, pest treatment, and sustainability articles from Peyote Seeds Farm.", canonical: "/blog" });
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (

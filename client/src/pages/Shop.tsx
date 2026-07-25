@@ -7,8 +7,10 @@ import { useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSeo } from "@/lib/seo";
 
 export default function Shop() {
+  useSeo({ title: "Shop", description: "Browse our full collection of greenhouse-grown cactus plants and seeds. Filter by category, search by name. Discreet worldwide shipping.", canonical: "/shop" });
   const searchString = useSearch();
   const urlSearch = useMemo(() => new URLSearchParams(searchString).get("search") ?? "", [searchString]);
   const [categoryId, setCategoryId] = useState<number | null>(null);

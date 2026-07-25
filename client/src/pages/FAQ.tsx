@@ -1,5 +1,6 @@
 import StoreLayout from "@/components/StoreLayout";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useSeo } from "@/lib/seo";
 
 const faqs = [
   {
@@ -37,6 +38,8 @@ const faqs = [
 ];
 
 export default function FAQ() {
+  useSeo({ title: "FAQ", description: "Frequently asked questions about ordering, shipping, payment methods, germination guarantee, and plant care at Peyote Seeds Farm.", canonical: "/faq" });
+
   return (
     <StoreLayout>
       <section className="bg-[oklch(0.22_0.04_155)] text-white py-20">

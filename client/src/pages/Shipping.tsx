@@ -1,7 +1,9 @@
 import StoreLayout from "@/components/StoreLayout";
 import { Truck, Package, Clock, Globe } from "lucide-react";
+import { useSeo } from "@/lib/seo";
 
 export default function Shipping() {
+  useSeo({ title: "Shipping & Delivery", description: "We ship worldwide via USPS. Domestic orders arrive in 5-7 business days. International orders take 7-21 days. Discreet packaging on all orders.", canonical: "/shipping" });
   return (
     <StoreLayout>
       <section className="bg-[oklch(0.22_0.04_155)] text-white py-20">

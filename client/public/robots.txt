@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /manager-login
+Disallow: /api/
+
+Sitemap: https://cactus-store-9zio.onrender.com/sitemap.xml

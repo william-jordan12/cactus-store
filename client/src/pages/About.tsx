@@ -1,7 +1,9 @@
 import StoreLayout from "@/components/StoreLayout";
 import { Leaf, Sprout, Globe, Heart } from "lucide-react";
+import { useSeo } from "@/lib/seo";
 
 export default function About() {
+  useSeo({ title: "About Us", description: "Learn about Peyote Seeds Farm — a small team of plant growers based in the southern US, growing and shipping rare cactus varieties to collectors worldwide.", canonical: "/about" });
   return (
     <StoreLayout>
       <section className="bg-[oklch(0.22_0.04_155)] text-white py-20">

@@ -1,6 +1,8 @@
 import StoreLayout from "@/components/StoreLayout";
+import { useSeo } from "@/lib/seo";
 
 export default function Privacy() {
+  useSeo({ title: "Privacy Policy", description: "How we collect, use, and protect your personal information. Payment details processed securely by Stripe — never stored on our servers.", canonical: "/privacy" });
   return (
     <StoreLayout>
       <section className="bg-[oklch(0.22_0.04_155)] text-white py-20">

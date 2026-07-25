@@ -1,7 +1,9 @@
 import StoreLayout from "@/components/StoreLayout";
 import { RotateCcw, AlertTriangle, CheckCircle } from "lucide-react";
+import { useSeo } from "@/lib/seo";
 
 export default function Returns() {
+  useSeo({ title: "Returns & Refunds", description: "Live plant return policy. If your order arrives damaged or DOA, contact us within 48 hours with photos for a full replacement or refund.", canonical: "/returns" });
   return (
     <StoreLayout>
       <section className="bg-[oklch(0.22_0.04_155)] text-white py-20">

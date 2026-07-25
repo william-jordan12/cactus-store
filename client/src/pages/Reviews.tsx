@@ -1,5 +1,6 @@
 import StoreLayout from "@/components/StoreLayout";
 import { Star } from "lucide-react";
+import { useSeo } from "@/lib/seo";
 
 const reviews = [
   {
@@ -146,6 +147,7 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export default function Reviews() {
+  useSeo({ title: "Customer Reviews", description: "Read real reviews from our customers. See what people say about our cactus plants, seeds, shipping, and customer service.", canonical: "/reviews" });
   const avgRating = (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1);
   const distribution = [5, 4, 3, 2, 1].map(r => ({
     stars: r,

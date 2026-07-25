@@ -7,6 +7,7 @@ import { ImageOff, Minus, Plus, ChevronRight, Truck, ShieldCheck, Leaf } from "l
 import { useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { toast } from "sonner";
+import { useSeo } from "@/lib/seo";
 
 export default function ProductDetail() {
   const params = useParams<{ id: string }>();
@@ -18,6 +19,13 @@ export default function ProductDetail() {
   const { data: product, isLoading, error } = trpc.store.product.useQuery({ id: productId });
   const { data: categories } = trpc.store.categories.useQuery();
   const { data: allProducts } = trpc.store.products.useQuery();
+
+  useSeo({
+    title: product?.title ?? "Product",
+    description: product?.description?.slice(0, 160) ?? "View this product on Peyote Seeds Farm. Greenhouse-grown, discreet worldwide shipping.",
+    canonical: `/product/${productId}`,
+    ogImage: product?.imageUrl ?? undefined,
+  });
 
   const images = useMemo(() => {
     if (!product) return [];
