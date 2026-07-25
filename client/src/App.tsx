@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import AdminGuard from "./components/AdminGuard";
+import CookieConsent from "./components/CookieConsent";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { CartProvider } from "./contexts/CartContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -114,6 +115,7 @@ function App() {
           <CartProvider>
             <Toaster position="top-center" richColors />
             <Router />
+            <CookieConsent />
           </CartProvider>
         </TooltipProvider>
       </ThemeProvider>
