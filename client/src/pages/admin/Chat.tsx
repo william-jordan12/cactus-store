@@ -43,9 +43,9 @@ export default function AdminChat() {
         Customer conversations appear here in real time. When the bot can't answer a question, the customer is connected to you.
       </p>
 
-      <div className="flex gap-4 h-[calc(100vh-16rem)]">
+      <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-16rem)]">
         {/* Conversations list */}
-        <div className="w-64 shrink-0 bg-white border border-border rounded-lg overflow-y-auto">
+        <div className="w-full md:w-64 shrink-0 bg-white border border-border rounded-lg overflow-y-auto max-h-48 md:max-h-none">
           {conversationsQuery.isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />

@@ -22,7 +22,7 @@ export default function AdminOrders() {
         Online payment orders (card or email payment requests) are logged here automatically. WhatsApp orders arrive
         directly in your WhatsApp chat.
       </p>
-      <div className="bg-white rounded-md border border-border overflow-x-auto">
+      <div className="bg-white rounded-md border border-border">
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -33,44 +33,73 @@ export default function AdminOrders() {
             No online orders yet. When customers pay by card, their orders appear here.
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Items Purchased</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Payment Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orders.map(order => (
-                <TableRow key={order.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {new Date(order.createdAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="font-medium">{order.customerName || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{order.customerEmail || "—"}</TableCell>
-                  <TableCell className="max-w-[320px]">
-                    <div className="space-y-0.5">
-                      {order.items.map(item => (
-                        <div key={item.id} className="text-xs">
-                          {item.title} <span className="text-muted-foreground">× {item.quantity}</span>
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Items Purchased</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Payment Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map(order => (
+                    <TableRow key={order.id}>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {new Date(order.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="font-medium">{order.customerName || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{order.customerEmail || "—"}</TableCell>
+                      <TableCell className="max-w-[320px]">
+                        <div className="space-y-0.5">
+                          {order.items.map(item => (
+                            <div key={item.id} className="text-xs">
+                              {item.title} <span className="text-muted-foreground">× {item.quantity}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-semibold">{formatPrice(order.totalCents)}</TableCell>
-                  <TableCell>
+                      </TableCell>
+                      <TableCell className="font-semibold">{formatPrice(order.totalCents)}</TableCell>
+                      <TableCell>
+                        <Badge className={STATUS_STYLES[order.paymentStatus] ?? ""} variant="secondary">
+                          {order.paymentStatus}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border">
+              {orders.map(order => (
+                <div key={order.id} className="p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{order.customerName || "—"}</span>
                     <Badge className={STATUS_STYLES[order.paymentStatus] ?? ""} variant="secondary">
                       {order.paymentStatus}
                     </Badge>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(order.createdAt).toLocaleDateString()} · {order.customerEmail || "—"}
+                  </div>
+                  <div className="text-xs space-y-0.5">
+                    {order.items.map(item => (
+                      <div key={item.id}>
+                        {item.title} <span className="text-muted-foreground">× {item.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="font-semibold text-sm">{formatPrice(order.totalCents)}</div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
       </div>
     </AdminLayout>

@@ -88,77 +88,114 @@ export default function AdminCategories() {
             No categories yet. Add one above to organize your products.
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-28 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="w-28 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categories.map(cat => (
+                    <TableRow key={cat.id}>
+                      <TableCell>
+                        {editingId === cat.id ? (
+                          <form
+                            className="flex gap-2 items-center"
+                            onSubmit={e => {
+                              e.preventDefault();
+                              if (editName.trim()) updateMutation.mutate({ id: cat.id, name: editName.trim() });
+                            }}
+                          >
+                            <Input
+                              value={editName}
+                              onChange={e => setEditName(e.target.value)}
+                              className="h-8"
+                              autoFocus
+                            />
+                            <Button type="submit" size="icon" variant="ghost" className="h-8 w-8" aria-label="Save">
+                              <Check className="h-4 w-4 text-primary" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => setEditingId(null)}
+                              aria-label="Cancel"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </form>
+                        ) : (
+                          <span className="font-medium">{cat.name}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingId(cat.id);
+                              setEditName(cat.name);
+                            }}
+                            aria-label="Rename"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeleting(cat)}
+                            aria-label="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="md:hidden divide-y divide-border">
               {categories.map(cat => (
-                <TableRow key={cat.id}>
-                  <TableCell>
-                    {editingId === cat.id ? (
-                      <form
-                        className="flex gap-2 items-center"
-                        onSubmit={e => {
-                          e.preventDefault();
-                          if (editName.trim()) updateMutation.mutate({ id: cat.id, name: editName.trim() });
-                        }}
-                      >
-                        <Input
-                          value={editName}
-                          onChange={e => setEditName(e.target.value)}
-                          className="h-8"
-                          autoFocus
-                        />
-                        <Button type="submit" size="icon" variant="ghost" className="h-8 w-8" aria-label="Save">
-                          <Check className="h-4 w-4 text-primary" />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          onClick={() => setEditingId(null)}
-                          aria-label="Cancel"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </form>
-                    ) : (
-                      <span className="font-medium">{cat.name}</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditingId(cat.id);
-                          setEditName(cat.name);
-                        }}
-                        aria-label="Rename"
-                      >
+                <div key={cat.id} className="flex items-center gap-2 p-3">
+                  {editingId === cat.id ? (
+                    <form
+                      className="flex gap-2 items-center flex-1"
+                      onSubmit={e => {
+                        e.preventDefault();
+                        if (editName.trim()) updateMutation.mutate({ id: cat.id, name: editName.trim() });
+                      }}
+                    >
+                      <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-8 flex-1" autoFocus />
+                      <Button type="submit" size="icon" variant="ghost" className="h-8 w-8" aria-label="Save">
+                        <Check className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingId(null)} aria-label="Cancel">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </form>
+                  ) : (
+                    <>
+                      <span className="font-medium text-sm flex-1">{cat.name}</span>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingId(cat.id); setEditName(cat.name); }} aria-label="Rename">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleting(cat)}
-                        aria-label="Delete"
-                      >
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(cat)} aria-label="Delete">
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    </>
+                  )}
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
       </div>
 

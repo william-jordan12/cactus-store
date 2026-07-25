@@ -245,7 +245,7 @@ export default function AdminProducts() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-md border border-border overflow-x-auto">
+      <div className="bg-white rounded-md border border-border">
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -255,57 +255,88 @@ export default function AdminProducts() {
             No products yet. Click "Add Product" to create your first one.
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">Image</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead className="w-24 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">Image</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead className="w-24 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {products.map(product => (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <div className="h-10 w-10 rounded bg-muted overflow-hidden flex items-center justify-center">
+                          {product.imageUrl ? (
+                            <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <ImageOff className="h-4 w-4 text-muted-foreground/40" />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium max-w-[280px] truncate">{product.title}</TableCell>
+                      <TableCell className="text-muted-foreground">{categoryName(product.categoryId)}</TableCell>
+                      <TableCell className="font-semibold">{formatPrice(product.priceCents)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(product)} aria-label="Edit">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeleting(product)}
+                            aria-label="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border">
               {products.map(product => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <div className="h-10 w-10 rounded bg-muted overflow-hidden flex items-center justify-center">
-                      {product.imageUrl ? (
-                        <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <ImageOff className="h-4 w-4 text-muted-foreground/40" />
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium max-w-[280px] truncate">{product.title}</TableCell>
-                  <TableCell className="text-muted-foreground">{categoryName(product.categoryId)}</TableCell>
-                  <TableCell className="font-semibold">{formatPrice(product.priceCents)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(product)} aria-label="Edit">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleting(product)}
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <div key={product.id} className="flex items-center gap-3 p-3">
+                  <div className="h-12 w-12 rounded bg-muted overflow-hidden flex items-center justify-center shrink-0">
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <ImageOff className="h-4 w-4 text-muted-foreground/40" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{product.title}</div>
+                    <div className="text-xs text-muted-foreground">{categoryName(product.categoryId)} · {formatPrice(product.priceCents)}</div>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)} aria-label="Edit">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(product)} aria-label="Delete">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Create / edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl mx-4 md:mx-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Product" : "Add Product"}</DialogTitle>
             <DialogDescription>
