@@ -20,7 +20,7 @@ const faqs = [
   },
   {
     question: "What payment methods do you accept?",
-    answer: "We accept all major credit and debit cards through our secure Stripe checkout. For select regions, we also accept WhatsApp orders with mobile payment options.",
+    answer: "We accept a wide range of payment methods: Cash App Pay, PayPal, Venmo, Zelle, Bitcoin, Apple Pay, Chime, bank transfers, and wire transfers. All payments are processed securely at checkout.",
   },
   {
     question: "Can I return or exchange an item?",
