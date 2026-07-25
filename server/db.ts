@@ -1,8 +1,10 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   categories,
+  chatMessages,
   InsertCategory,
+  InsertChatMessage,
   InsertOrder,
   InsertOrderItem,
   InsertProduct,
@@ -51,6 +53,22 @@ export async function getDb() {
         }
       } catch (e: any) {
         console.warn("[Database] images column migration:", e?.message);
+      }
+      // Auto-migrate: create chatMessages table if missing
+      try {
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS chatMessages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            conversationId VARCHAR(64) NOT NULL,
+            sender ENUM('customer','admin','bot') NOT NULL,
+            text TEXT NOT NULL,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            INDEX idx_chat_conv (conversationId),
+            INDEX idx_chat_created (createdAt)
+          )
+        `);
+      } catch (e: any) {
+        console.warn("[Database] chatMessages migration:", e?.message);
       }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -315,4 +333,57 @@ export async function deleteReview(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(reviews).where(eq(reviews.id, id));
+}
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
+export async function sendChatMessage(data: InsertChatMessage) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(chatMessages).values(data);
+  return result.insertId;
+}
+
+export async function getChatMessages(conversationId: string, afterId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (afterId) {
+    return db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.conversationId, conversationId))
+      .where(gt(chatMessages.id, afterId))
+      .orderBy(chatMessages.createdAt);
+  }
+  return db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.conversationId, conversationId))
+    .orderBy(chatMessages.createdAt);
+}
+
+export async function listChatConversations() {
+  const db = await getDb();
+  if (!db) return [];
+  const all = await db.select().from(chatMessages).orderBy(desc(chatMessages.createdAt));
+  const convMap = new Map<string, { conversationId: string; lastMessage: string; lastSender: string; lastAt: Date; unread: number }>();
+  for (const msg of all) {
+    const existing = convMap.get(msg.conversationId);
+    if (!existing) {
+      convMap.set(msg.conversationId, {
+        conversationId: msg.conversationId,
+        lastMessage: msg.text,
+        lastSender: msg.sender,
+        lastAt: msg.createdAt,
+        unread: msg.sender === "customer" ? 1 : 0,
+      });
+    } else if (msg.sender === "customer" && !existing.lastMessage) {
+      existing.unread++;
+    }
+  }
+  return Array.from(convMap.values()).sort(
+    (a, b) => b.lastAt.getTime() - a.lastAt.getTime()
+  );
 }

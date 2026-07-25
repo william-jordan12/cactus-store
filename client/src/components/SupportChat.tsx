@@ -1,23 +1,34 @@
 import { MessageCircle, X, Send, Headphones } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
 
-type ChatMessage = {
+type UiMessage = {
   id: number;
-  sender: "user" | "support";
+  sender: "user" | "admin" | "bot";
   text: string;
   time: string;
 };
 
-const WELCOME_MESSAGES: ChatMessage[] = [
+function getVisitorId(): string {
+  const key = "store_chat_visitor_id";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+const WELCOME_MESSAGES: UiMessage[] = [
   {
     id: 1,
-    sender: "support",
+    sender: "bot",
     text: "Hi there! Welcome to Cactus Store support. How can we help you today?",
     time: "now",
   },
   {
     id: 2,
-    sender: "support",
+    sender: "bot",
     text: "You can ask us about orders, shipping, plant care, or anything else!",
     time: "now",
   },
@@ -32,27 +43,63 @@ const QUICK_REPLIES = [
 
 export default function SupportChat() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>(WELCOME_MESSAGES);
+  const [messages, setMessages] = useState<UiMessage[]>(WELCOME_MESSAGES);
   const [input, setInput] = useState("");
+  const [visitorId] = useState(() => getVisitorId());
+  const [lastPolledId, setLastPolledId] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 200);
+  const sendMutation = trpc.chat.send.useMutation();
+  const pollQuery = trpc.chat.poll.useQuery(
+    { conversationId: visitorId, afterId: lastPolledId || undefined },
+    {
+      refetchInterval: open ? 3000 : false,
+      enabled: open,
     }
+  );
+
+  // Focus input when opened
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 200);
   }, [open]);
 
+  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Integrate polled messages into the UI
+  useEffect(() => {
+    const data = pollQuery.data;
+    if (!data || data.length === 0) return;
+
+    setMessages(prev => {
+      const existingIds = new Set(prev.map(m => m.id));
+      const newMsgs: UiMessage[] = data
+        .filter((m: any) => !existingIds.has(m.id))
+        .map((m: any) => ({
+          id: m.id,
+          sender: m.sender === "customer" ? "user" : (m.sender as "admin" | "bot"),
+          text: m.text,
+          time: new Date(m.createdAt).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+          }),
+        }));
+      if (newMsgs.length === 0) return prev;
+      // Track the highest ID polled
+      const maxId = Math.max(...data.map((m: any) => m.id));
+      setLastPolledId(maxId);
+      return [...prev, ...newMsgs];
+    });
+  }, [pollQuery.data]);
+
   const formatTime = () =>
     new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     if (!text.trim()) return;
-    const userMsg: ChatMessage = {
+    const userMsg: UiMessage = {
       id: Date.now(),
       sender: "user",
       text: text.trim(),
@@ -61,32 +108,14 @@ export default function SupportChat() {
     setMessages(prev => [...prev, userMsg]);
     setInput("");
 
-    setTimeout(() => {
-      const supportMsg: ChatMessage = {
-        id: Date.now() + 1,
-        sender: "support",
-        text: getAutoReply(text.trim()),
-        time: formatTime(),
-      };
-      setMessages(prev => [...prev, supportMsg]);
-    }, 800);
-  };
-
-  const getAutoReply = (msg: string): string => {
-    const lower = msg.toLowerCase();
-    if (lower.includes("order") || lower.includes("track"))
-      return "You can track your order using the tracking link sent to your email. If you can't find it, share your order number and we'll look it up.";
-    if (lower.includes("ship"))
-      return "We ship worldwide! Domestic orders arrive in 5-7 business days. International orders take 7-21 days. All plants are packed with care for safe transit.";
-    if (lower.includes("return") || lower.includes("refund"))
-      return "Due to the living nature of our products, we don't accept returns on live plants. If your order arrives damaged, contact us within 48 hours with photos and we'll make it right.";
-    if (lower.includes("care") || lower.includes("water") || lower.includes("light"))
-      return "Most cacti love bright, indirect light and well-draining soil. Water only when the soil is completely dry. In winter, reduce watering significantly. Each order includes a species-specific care card!";
-    if (lower.includes("seed") || lower.includes("germ"))
-      return "Our seeds are freshly harvested and tested for viability. Most species germinate within 7-14 days in warm conditions. Check the care card included with your order for specific instructions.";
-    if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey"))
-      return "Hello! Great to have you here. What can we help you with today?";
-    return "Thanks for reaching out! We'll get back to you as soon as we can. Check our FAQ page in the meantime — it covers most common questions.";
+    try {
+      await sendMutation.mutateAsync({
+        conversationId: visitorId,
+        text: text.trim(),
+      });
+    } catch (err) {
+      console.error("Chat send failed:", err);
+    }
   };
 
   return (
@@ -135,6 +164,9 @@ export default function SupportChat() {
                       : "bg-white text-foreground border border-border shadow-sm rounded-bl-md"
                   }`}
                 >
+                  {msg.sender === "admin" && (
+                    <div className="text-[10px] font-bold text-[oklch(0.47_0.11_155)] mb-0.5">Staff</div>
+                  )}
                   {msg.text}
                   <div
                     className={`text-[10px] mt-1 ${
@@ -182,7 +214,7 @@ export default function SupportChat() {
               />
               <button
                 type="submit"
-                disabled={!input.trim()}
+                disabled={!input.trim() || sendMutation.isPending}
                 className="h-10 w-10 rounded-full bg-[oklch(0.47_0.11_155)] text-white flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Send className="h-4 w-4" />
