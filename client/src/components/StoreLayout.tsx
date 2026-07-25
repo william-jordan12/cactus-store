@@ -80,7 +80,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
               <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Sprout className="h-5 w-5 text-primary" />
+                    <img src="/cactus-logo.png" alt="Logo" className="h-6 w-6 object-contain" />
                   </div>
                   <span className="font-display text-sm font-black text-primary uppercase">{storeName}</span>
                 </div>
@@ -111,7 +111,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center">
-              <Sprout className="h-6 w-6 text-primary" />
+              <img src="/cactus-logo.png" alt="Logo" className="h-7 w-7 object-contain" />
             </div>
             <div className="leading-tight">
               <div className="font-display text-lg font-black text-primary uppercase">{storeName}</div>
