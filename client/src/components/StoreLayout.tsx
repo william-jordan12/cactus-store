@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import AdminBar from "@/components/AdminBar";
+import SupportChat from "@/components/SupportChat";
 import { useCart } from "@/contexts/CartContext";
 import { trpc } from "@/lib/trpc";
 import { Mail, Menu, Search, ShoppingCart, Sprout, X } from "lucide-react";
@@ -206,6 +207,8 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
       </footer>
+
+      <SupportChat />
     </div>
   );
 }
