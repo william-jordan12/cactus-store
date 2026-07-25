@@ -125,6 +125,8 @@ export default function Cart() {
     totalCents: number;
     paymentMethod: string;
     items: { title: string; quantity: number; unitPriceCents: number }[];
+    shippingAddress: string;
+    billingAddress: string;
   } | null>(null);
 
   const minimumOrderCents = settings?.minimumOrderCents ?? 10000;
@@ -149,7 +151,8 @@ ${itemLines}
 Customer Name: ${name}
 Email: ${email}
 Phone: ${phone}
-Shipping Address: ${shippingAddress}
+Shipping Address: ${placedOrder.shippingAddress}
+Billing Address: ${placedOrder.billingAddress}
 
 Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank you!`;
   };
@@ -173,11 +176,14 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
         billingAddress: billing.trim(),
         paymentMethod: selectedPayment as never,
       });
+      const billing = sameAsShipping ? shippingAddress : billingAddress;
       setPlacedOrder({
         orderId: result.orderId,
         totalCents: result.totalCents,
         paymentMethod: result.paymentMethod,
         items: result.items,
+        shippingAddress: shippingAddress.trim(),
+        billingAddress: billing.trim(),
       });
       clearCart();
     } catch (err) {
