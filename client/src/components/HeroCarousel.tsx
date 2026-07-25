@@ -5,20 +5,20 @@ const slides = [
   {
     heading: "Grown with care,\nshipped with discretion",
     body: "Rare cactus species and seeds, cultivated in our greenhouse and delivered worldwide in protective, unmarked packaging.",
-    cta: { label: "Browse the collection", href: "#shop" },
-    accent: "bg-[oklch(0.22_0.04_155)]",
+    cta: { label: "Browse the collection", href: "/shop" },
+    image: "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=1600&q=80",
   },
   {
     heading: "For collectors\nwho know the difference",
     body: "Ariocarpus, Astrophytum, Lophophora — each specimen selected by growers, not algorithms.",
-    cta: { label: "See what's available", href: "#shop" },
-    accent: "bg-[oklch(0.20_0.035_170)]",
+    cta: { label: "See what's available", href: "/shop" },
+    image: "https://images.unsplash.com/photo-1446071103084-c257b5f70672?w=1600&q=80",
   },
   {
     heading: "Start from seed.\nIt's worth the wait.",
     body: "Germination kits with sterile substrate, humidity control, and the guidance to get your first seedlings established.",
-    cta: { label: "Shop kits", href: "#shop" },
-    accent: "bg-[oklch(0.24_0.04_145)]",
+    cta: { label: "Shop kits", href: "/shop" },
+    image: "https://images.unsplash.com/photo-1509423350716-97f9360b4e09?w=1600&q=80",
   },
 ];
 
@@ -38,12 +38,30 @@ export default function HeroCarousel() {
 
   return (
     <section
-      className={`relative overflow-hidden ${slides[current].accent} transition-colors duration-1000`}
+      className="relative overflow-hidden bg-[oklch(0.15_0.03_155)] transition-colors duration-1000"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
+      {/* Background images */}
+      {slides.map((slide, i) => (
+        <div
+          key={i}
+          className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
+          style={{ opacity: i === current ? 1 : 0 }}
+        >
+          <img
+            src={slide.image}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ))}
+
+      {/* Dark overlay for text readability */}
+      <div className="absolute inset-0 bg-black/60" />
+
       {/* Subtle grain overlay */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }} />
+      <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }} />
 
       <div className="container relative py-16 md:py-24 lg:py-32 min-h-[320px] md:min-h-[400px] lg:min-h-[480px] flex items-center">
         <div
