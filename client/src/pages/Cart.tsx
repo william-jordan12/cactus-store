@@ -223,7 +223,7 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
 
   const openEmail = () => {
     const msg = buildPaymentMessage();
-    const subject = encodeURIComponent(`Order #${placedOrder?.orderId} - Payment via ${placedOrder?.paymentMethod}`);
+    const subject = encodeURIComponent(`Payment via ${placedOrder?.paymentMethod}`);
     const body = encodeURIComponent(msg);
     window.open(`mailto:${contactEmail}?subject=${subject}&body=${body}`, "_blank");
   };
@@ -237,9 +237,9 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
             <CheckCircle2 className="h-12 w-12 text-primary mb-3" />
             <h1 className="font-display text-xl md:text-2xl font-black mb-1">Order Confirmed!</h1>
             <p className="text-muted-foreground text-sm">
-              Order <span className="font-bold text-foreground">#{placedOrder.orderId}</span> for{" "}
+              Your order for{" "}
               <span className="font-bold text-foreground">{formatPrice(placedOrder.totalCents)}</span> via{" "}
-              <span className="font-bold text-foreground">{placedOrder.paymentMethod}</span>.
+              <span className="font-bold text-foreground">{placedOrder.paymentMethod}</span> has been received.
             </p>
           </div>
 
