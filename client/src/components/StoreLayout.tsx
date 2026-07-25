@@ -3,7 +3,7 @@ import AdminBar from "@/components/AdminBar";
 import SupportChat from "@/components/SupportChat";
 import { useCart } from "@/contexts/CartContext";
 import { trpc } from "@/lib/trpc";
-import { Mail, Menu, Search, ShoppingCart, Sprout, X } from "lucide-react";
+import { Mail, Menu, Search, ShoppingCart, Sprout } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -83,16 +83,13 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-0">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center px-5 py-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
                     <img src="/cactus-logo.png" alt="Logo" className="h-6 w-6 object-contain" />
                   </div>
                   <span className="font-display text-sm font-black text-primary uppercase">{storeName}</span>
                 </div>
-                <button onClick={() => setOpen(false)} className="p-1 text-muted-foreground hover:text-foreground" aria-label="Close menu">
-                  <X className="h-5 w-5" />
-                </button>
               </div>
               <nav className="flex flex-col p-4">
                 {navLinks.map((link) => (
