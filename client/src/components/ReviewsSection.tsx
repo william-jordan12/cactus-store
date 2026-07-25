@@ -1,185 +1,89 @@
-import { Star } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Star, Quote } from "lucide-react";
 
 const reviews = [
   {
     name: "Sarah M.",
     location: "Austin, TX",
-    avatar: "SM",
     rating: 5,
-    text: "My Ariocarpus arrived in perfect condition, packed like a little museum piece. It's already plumping up beautifully. Best cactus purchase I've ever made online.",
+    text: "My Ariocarpus arrived in perfect condition, packed like a little museum piece. It's already plumping up beautifully.",
     product: "Ariocarpus Furfuraceus",
-  },
-  {
-    name: "Marco L.",
-    location: "Milan, Italy",
-    avatar: "ML",
-    rating: 4,
-    text: "Seeds germinated well but shipping to Italy took almost 3 weeks. The care guide that came with the order was genuinely useful though. Would order again if they improve delivery times.",
-    product: "Mixed Cactus Seed Pack",
-  },
-  {
-    name: "David K.",
-    location: "Portland, OR",
-    avatar: "DK",
-    rating: 3,
-    text: "I've been collecting for 15 years and this Lophophora was decent but not what I expected. It was smaller than pictured and the root system wasn't as developed as described. Alive and healthy though.",
-    product: "Lophophora Williamsii",
   },
   {
     name: "Yuki T.",
     location: "Tokyo, Japan",
-    label: "Verified Buyer",
-    avatar: "YT",
     rating: 5,
-    text: "Shipping to Japan was faster than expected — only 10 days! The packaging was discreet and professional. The Astrophytum myriostigma is stunning. Will order again.",
+    text: "Shipping to Japan was faster than expected — only 10 days. The Astrophytum myriostigma is stunning.",
     product: "Astrophytum Myriostigma",
-  },
-  {
-    name: "Emma R.",
-    location: "London, UK",
-    avatar: "ER",
-    rating: 4,
-    text: "Beautiful collection of Ariocarpus. I ordered three different species and they all arrived healthy. One had a small scar but that's natural for these slow growers. Very happy overall.",
-    product: "Ariocarpus Collection",
-  },
-  {
-    name: "Carlos P.",
-    location: "Mexico City, MX",
-    avatar: "CP",
-    rating: 2,
-    text: "Disappointing. Half the seeds didn't germinate and I followed the instructions exactly. Reached out to support and they offered a partial refund which was fair, but still frustrating for the price.",
-    product: "Lophophora Seeds",
   },
   {
     name: "Anna S.",
     location: "Berlin, Germany",
-    avatar: "AS",
     rating: 5,
-    text: "The Astrophytum asterias I received is absolutely gorgeous — a perfect star shape with beautiful white flocking. Arrived in a custom pot with drainage. Exceeded all expectations.",
+    text: "The asterias I received is gorgeous — perfect star shape with beautiful white flocking. Exceeded expectations.",
     product: "Astrophytum Asterias",
   },
   {
-    name: "James W.",
-    location: "Sydney, Australia",
-    avatar: "JW",
+    name: "Emma R.",
+    location: "London, UK",
     rating: 4,
-    text: "Packaging was solid and the plant survived 14 days in transit which is impressive. One of the roots was slightly damaged but it's recovering well. Overall a decent experience.",
+    text: "Ordered three different species and they all arrived healthy. One had a small scar but that's natural for these slow growers.",
+    product: "Ariocarpus Collection",
+  },
+  {
+    name: "James W.",
+    location: "Sydney, AU",
+    rating: 4,
+    text: "Plant survived 14 days in transit which is impressive. One root was slightly damaged but recovering well.",
     product: "Lophophora Williamsii Var. Texana",
   },
 ];
 
-function ReviewCard({ review, index }: { review: typeof reviews[number]; index: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.15 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  const colors = [
-    "bg-emerald-600",
-    "bg-amber-600",
-    "bg-sky-600",
-    "bg-rose-600",
-    "bg-violet-600",
-    "bg-teal-600",
-    "bg-orange-600",
-    "bg-indigo-600",
-  ];
-
-  return (
-    <div
-      ref={ref}
-      className={`bg-white border border-border rounded-xl p-5 shadow-sm flex flex-col gap-3 transition-all duration-700 ease-out ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-      }`}
-      style={{ transitionDelay: `${index * 100}ms` }}
-    >
-      <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-full ${colors[index % colors.length]} text-white flex items-center justify-center text-sm font-bold shrink-0`}>
-          {review.avatar}
-        </div>
-        <div className="min-w-0">
-          <div className="font-semibold text-sm truncate">{review.name}</div>
-          <div className="text-xs text-muted-foreground">{review.location}</div>
-        </div>
-        <div className="ml-auto flex gap-0.5 shrink-0">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star
-              key={i}
-              className={`h-3.5 w-3.5 ${i < review.rating ? "fill-amber-400 text-amber-400" : "text-muted/40"}`}
-            />
-          ))}
-        </div>
-      </div>
-      <p className="text-sm text-muted-foreground leading-relaxed">{review.text}</p>
-      <div className="mt-auto pt-1">
-        <span className="text-[11px] uppercase tracking-wide text-primary font-semibold">
-          {review.product}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export default function ReviewsSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [sectionVisible, setSectionVisible] = useState(false);
-
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setSectionVisible(true);
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.05 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
   return (
-    <section
-      id="reviews"
-      ref={sectionRef}
-      className="bg-[oklch(0.97_0.005_155)] border-t border-border"
-    >
-      <div className="container py-16">
-        <div
-          className={`text-center mb-10 transition-all duration-700 ease-out ${
-            sectionVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-          }`}
-        >
-          <p className="text-primary uppercase tracking-[0.25em] text-xs font-bold mb-2">
-            What Collectors Say
-          </p>
-          <h2 className="font-display text-2xl md:text-3xl font-black mb-2">
-            Trusted by Plant Lovers Worldwide
-          </h2>
-          <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            Real reviews from our customers across 40+ countries
-          </p>
+    <section id="reviews" className="bg-[oklch(0.97_0.005_155)]">
+      <div className="container py-16 md:py-20">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <p className="text-primary text-xs font-semibold uppercase tracking-widest mb-2">From our customers</p>
+            <h2 className="font-display text-2xl md:text-3xl font-black">What collectors say</h2>
+          </div>
+          <div className="hidden md:flex items-center gap-1.5 text-muted-foreground text-sm">
+            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+            <span className="font-semibold text-foreground">4.6</span>
+            <span>average from verified buyers</span>
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <div className="flex gap-4 overflow-x-auto pb-4 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide">
           {reviews.map((review, i) => (
-            <ReviewCard key={i} review={review} index={i} />
+            <div
+              key={i}
+              className="snap-start shrink-0 w-[300px] md:w-[340px] bg-white border border-border rounded-xl p-6 flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex gap-0.5">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <Star
+                      key={j}
+                      className={`h-3.5 w-3.5 ${j < review.rating ? "fill-amber-400 text-amber-400" : "text-gray-200"}`}
+                    />
+                  ))}
+                </div>
+                <Quote className="h-4 w-4 text-border" />
+              </div>
+              <p className="text-sm text-foreground/80 leading-relaxed flex-1 mb-4">
+                "{review.text}"
+              </p>
+              <div className="border-t border-border pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-semibold">{review.name}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{review.location}</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">{review.product}</p>
+              </div>
+            </div>
           ))}
         </div>
       </div>

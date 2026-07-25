@@ -1,4 +1,3 @@
-import { Mail } from "lucide-react";
 import { useState } from "react";
 
 export default function Newsletter() {
@@ -13,38 +12,30 @@ export default function Newsletter() {
   };
 
   return (
-    <section className="bg-[oklch(0.47_0.11_155)]">
-      <div className="container py-14 flex flex-col md:flex-row items-center gap-8">
-        <div className="flex-1 text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
-            <Mail className="h-6 w-6 text-white/70" />
-            <h2 className="font-display text-xl md:text-2xl font-black text-white">
-              Stay in the Loop
-            </h2>
-          </div>
-          <p className="text-white/70 text-sm max-w-md">
-            Get notified about new arrivals, rare species drops, and exclusive care tips.
-            No spam — just the good stuff.
+    <section className="border-t border-border">
+      <div className="container py-14 md:py-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div>
+          <h2 className="font-display text-xl md:text-2xl font-black mb-1">Stay updated</h2>
+          <p className="text-muted-foreground text-sm">
+            New arrivals, rare species, and care notes — delivered monthly.
           </p>
         </div>
         <div className="w-full md:w-auto">
           {submitted ? (
-            <div className="bg-white/10 backdrop-blur-sm text-white rounded-xl px-6 py-4 text-center font-semibold">
-              Thanks for subscribing!
-            </div>
+            <p className="text-sm text-primary font-medium py-2">Thanks — you're on the list.</p>
           ) : (
             <form onSubmit={handleSubmit} className="flex gap-2 w-full md:w-auto">
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Your email address"
+                placeholder="Email address"
                 required
-                className="flex-1 md:w-72 bg-white/15 backdrop-blur-sm text-white placeholder-white/50 border border-white/20 rounded-lg px-4 py-3 text-sm outline-none focus:border-white/50 transition-colors"
+                className="flex-1 md:w-64 bg-muted/60 border border-border rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary/40 transition-all"
               />
               <button
                 type="submit"
-                className="bg-white text-[oklch(0.47_0.11_155)] font-bold uppercase tracking-wide px-6 py-3 rounded-lg text-sm hover:bg-white/90 transition-colors shrink-0"
+                className="bg-foreground text-background font-semibold px-5 py-2.5 rounded-lg text-sm hover:opacity-90 transition-opacity shrink-0"
               >
                 Subscribe
               </button>
