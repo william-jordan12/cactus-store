@@ -149,6 +149,7 @@ ${itemLines}
 Customer Name: ${name}
 Email: ${email}
 Phone: ${phone}
+Shipping Address: ${shippingAddress}
 
 Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank you!`;
   };
