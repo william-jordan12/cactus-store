@@ -1,7 +1,6 @@
 import FeaturedCategories from "@/components/FeaturedCategories";
 import HeroCarousel from "@/components/HeroCarousel";
 import Newsletter from "@/components/Newsletter";
-import ReviewsSection from "@/components/ReviewsSection";
 import StoreLayout from "@/components/StoreLayout";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import { Button } from "@/components/ui/button";
@@ -65,44 +64,20 @@ export default function Home() {
               {search ? "Search results" : "Shop"}
             </h2>
           </div>
-          {categories && categories.length > 0 && (
-            <div className="hidden md:flex items-center gap-1.5">
-              <button
-                onClick={() => setCategoryId(null)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                  categoryId === null
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
-                }`}
-              >
-                All
-              </button>
-              {categories.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategoryId(cat.id === categoryId ? null : cat.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    categoryId === cat.id
-                      ? "bg-foreground text-background border-foreground"
-                      : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-          )}
+          <Link href="/shop" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium hidden md:block">
+            View all →
+          </Link>
         </div>
 
-        {/* Mobile category filter */}
+        {/* Category filter */}
         {categories && categories.length > 0 && (
-          <div className="flex md:hidden flex-wrap gap-1.5 mb-6">
+          <div className="flex flex-wrap gap-1.5 mb-8">
             <button
               onClick={() => setCategoryId(null)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 categoryId === null
                   ? "bg-foreground text-background border-foreground"
-                  : "bg-transparent text-muted-foreground border-border"
+                  : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
               }`}
             >
               All
@@ -114,7 +89,7 @@ export default function Home() {
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                   categoryId === cat.id
                     ? "bg-foreground text-background border-foreground"
-                    : "bg-transparent text-muted-foreground border-border"
+                    : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
                 }`}
               >
                 {cat.name}
@@ -145,16 +120,7 @@ export default function Home() {
                 : "We're stocking the shelves. Check back soon."}
             </p>
             {(search || categoryId) && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => {
-                  setSearch("");
-                  setCategoryId(null);
-                  window.history.replaceState(null, "", "/");
-                }}
-              >
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => { setSearch(""); setCategoryId(null); window.history.replaceState(null, "", "/"); }}>
                 Clear filters
               </Button>
             )}
@@ -162,19 +128,10 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
             {products.map(product => (
-              <Link
-                key={product.id}
-                href={`/product/${product.id}`}
-                className="group flex flex-col"
-              >
+              <Link key={product.id} href={`/product/${product.id}`} className="group flex flex-col">
                 <div className="aspect-[4/5] bg-muted/40 rounded-lg overflow-hidden mb-3 flex items-center justify-center">
                   {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.title}
-                      loading="lazy"
-                      className="h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-                    />
+                    <img src={product.imageUrl} alt={product.title} loading="lazy" className="h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" />
                   ) : (
                     <ImageOff className="h-8 w-8 text-muted-foreground/20" strokeWidth={1.5} />
                   )}
@@ -203,7 +160,100 @@ export default function Home() {
         )}
       </section>
 
-      <ReviewsSection />
+      {/* Editorial content */}
+      <section className="border-t border-border">
+        <div className="container py-14 md:py-20">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="font-display text-2xl md:text-3xl font-black mb-6">
+              About Our Collection
+            </h2>
+            <div className="prose prose-sm text-muted-foreground leading-relaxed space-y-4">
+              <p>
+                Every plant and seed in our collection is sourced from trusted greenhouse cultivators
+                who share our commitment to ethical propagation. We work exclusively with growers who
+                cultivate under controlled, sustainable conditions — never removing specimens from
+                their natural habitats.
+              </p>
+              <p>
+                Whether you're an experienced collector of Ariocarpus and Astrophytum or just starting
+                your first Lophophora from seed, each order is inspected before shipping. We package
+                bare-root plants in moisture-controlled wrapping with insulated outer containers,
+                and seeds go out in sterile, sealed envelopes with germination instructions.
+              </p>
+              <p>
+                Our team includes active growers who've been cultivating cacti for over a decade. If
+                you need advice on substrate mix, light levels, or winter dormancy schedules, reach out
+                — we'd rather help you succeed than see another plant end up in the compost.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Growing guide excerpt */}
+      <section className="bg-[oklch(0.97_0.005_155)] border-y border-border">
+        <div className="container py-14 md:py-20">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-16">
+            <div>
+              <p className="text-primary text-xs font-semibold uppercase tracking-widest mb-2">Growing tips</p>
+              <h2 className="font-display text-2xl md:text-3xl font-black mb-4">
+                Starting cacti from seed
+              </h2>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+                Growing from seed is the most rewarding way to build a collection. It's also the most
+                forgiving for beginners — you get to watch every stage of development, and seedlings
+                are surprisingly resilient if you get the basics right.
+              </p>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Use a sterile, well-draining mineral substrate. Keep humidity between 70–80% for the
+                first few months using a dome or covered tray. Provide bright indirect light and
+                temperatures around 25–28°C. Water from below to avoid disturbing seedlings. Most
+                species germinate within 7–14 days under these conditions.
+              </p>
+            </div>
+            <div>
+              <p className="text-primary text-xs font-semibold uppercase tracking-widest mb-2">Care guide</p>
+              <h2 className="font-display text-2xl md:text-3xl font-black mb-4">
+                Mature plant care
+              </h2>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+                Once established, most desert cacti are among the lowest-maintenance plants you can
+                grow. The key is resisting the urge to overwater. Let the soil dry completely between
+                waterings — during winter dormancy, some species can go months without a drop.
+              </p>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Provide maximum sunlight. South-facing windowsills or grow lights with 6+ hours of
+                direct exposure will keep plants compact and healthy. In summer, outdoor placement
+                on a shaded balcony works well. Good airflow prevents fungal issues, especially in
+                humid climates.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Legality section */}
+      <section className="container py-14 md:py-20">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-primary text-xs font-semibold uppercase tracking-widest mb-2">Good to know</p>
+          <h2 className="font-display text-2xl md:text-3xl font-black mb-6">
+            Legality &amp; responsible growing
+          </h2>
+          <div className="text-muted-foreground text-sm leading-relaxed space-y-4">
+            <p>
+              Most cactus seeds and non-drug-containing species are legal to own, buy, and sell in
+              most jurisdictions. Species like Astrophytum, Ariocarpus, and many Lophophora varieties
+              are widely available to collectors without restriction.
+            </p>
+            <p>
+              We encourage all customers to familiarize themselves with their local regulations
+              before ordering. Responsible cultivation means respecting both the law and the
+              ecological significance of these plants. Every species we offer is greenhouse-propagated,
+              never wild-collected.
+            </p>
+          </div>
+        </div>
+      </section>
 
       <Newsletter />
     </StoreLayout>

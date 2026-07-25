@@ -12,7 +12,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   const { user, isAuthenticated } = useAuth();
   const { itemCount, totalCents } = useCart();
   const { data: settings } = trpc.store.settings.useQuery();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
   const isAdmin = isAuthenticated && user?.role === "admin";
@@ -20,30 +20,25 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(`/?search=${encodeURIComponent(searchTerm)}`);
+    navigate(`/shop?search=${encodeURIComponent(searchTerm)}`);
+  };
+
+  const isActive = (href: string) => {
+    if (href === "/") return location === "/";
+    return location.startsWith(href);
   };
 
   const navLinks = [
     { href: "/", label: "Home" },
+    { href: "/shop", label: "Shop" },
+    { href: "/reviews", label: "Reviews" },
     { href: "/about", label: "About Us" },
-    { href: "/#shop", label: "Shop", anchor: true },
-    { href: "/#reviews", label: "Reviews", anchor: true },
     { href: "/faq", label: "FAQ" },
     { href: "/blog", label: "Blog" },
-    { href: "/cart", label: "Cart" },
-    ...(settings?.contactEmail ? [{ href: `mailto:${settings.contactEmail}`, label: "Contact Us", anchor: true }] : []),
   ];
 
-  const handleNavClick = (href: string, anchor?: boolean) => {
-    if (anchor) {
-      if (href.startsWith("/#")) {
-        const el = document.getElementById(href.slice(2));
-        if (el) { el.scrollIntoView({ behavior: "smooth" }); setOpen(false); return; }
-      }
-      window.location.href = href;
-    } else {
-      navigate(href);
-    }
+  const handleNavClick = (href: string) => {
+    navigate(href);
     setOpen(false);
   };
 
@@ -92,12 +87,22 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
                 {navLinks.map((link) => (
                   <button
                     key={link.href + link.label}
-                    onClick={() => handleNavClick(link.href, link.anchor)}
-                    className="text-left py-3 px-3 text-sm font-bold uppercase tracking-wide text-foreground/80 hover:text-primary hover:bg-primary/5 rounded-md transition-colors"
+                    onClick={() => handleNavClick(link.href)}
+                    className={`text-left py-3 px-3 text-sm font-bold uppercase tracking-wide rounded-md transition-colors ${
+                      isActive(link.href)
+                        ? "text-primary bg-primary/5"
+                        : "text-foreground/80 hover:text-primary hover:bg-primary/5"
+                    }`}
                   >
                     {link.label}
                   </button>
                 ))}
+                <button
+                  onClick={() => handleNavClick("/cart")}
+                  className="text-left py-3 px-3 text-sm font-bold uppercase tracking-wide text-foreground/80 hover:text-primary hover:bg-primary/5 rounded-md transition-colors"
+                >
+                  Cart {itemCount > 0 && `(${itemCount})`}
+                </button>
               </nav>
               {settings?.contactEmail && (
                 <div className="border-t border-border px-5 py-4">
@@ -150,14 +155,20 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
         {/* Desktop nav bar — hidden on mobile */}
         <nav className="border-t border-border hidden md:block">
-          <div className="container flex items-center gap-6 h-10 text-[13px] font-bold uppercase tracking-wide text-foreground/80 overflow-x-auto">
-            {navLinks.map((link) =>
-              link.anchor ? (
-                <a key={link.href} href={link.href} className="hover:text-primary whitespace-nowrap transition-colors">{link.label}</a>
-              ) : (
-                <Link key={link.href} href={link.href} className="hover:text-primary whitespace-nowrap transition-colors">{link.label}</Link>
-              )
-            )}
+          <div className="container flex items-center gap-6 h-10 text-[13px] font-bold uppercase tracking-wide overflow-x-auto">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`whitespace-nowrap transition-colors ${
+                  isActive(link.href)
+                    ? "text-primary"
+                    : "text-foreground/60 hover:text-foreground"
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
         </nav>
       </header>
@@ -189,8 +200,8 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
             <div className="flex flex-col gap-2 text-sm">
               <Link href="/" className="hover:text-white transition-colors">Home</Link>
               <Link href="/about" className="hover:text-white transition-colors">About Us</Link>
-              <a href="/#shop" className="hover:text-white transition-colors">Shop</a>
-              <a href="/#reviews" className="hover:text-white transition-colors">Reviews</a>
+              <Link href="/shop" className="hover:text-white transition-colors">Shop</Link>
+              <Link href="/reviews" className="hover:text-white transition-colors">Reviews</Link>
               <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
               <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
               {settings?.contactEmail && (

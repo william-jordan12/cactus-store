@@ -24,11 +24,15 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 
 import ProductDetail from "./pages/ProductDetail";
+import Shop from "./pages/Shop";
+import Reviews from "./pages/Reviews";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/shop"} component={Shop} />
+      <Route path={"/reviews"} component={Reviews} />
       <Route path={"/product/:id"} component={ProductDetail} />
       <Route path={"/cart"} component={Cart} />
       <Route path={"/checkout/success"} component={CheckoutSuccess} />
