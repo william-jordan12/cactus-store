@@ -85,7 +85,6 @@ export default function AdminProducts() {
     utils.store.products.invalidate();
   };
 
-  const uploadMutation = trpc.admin.products.uploadImage.useMutation();
   const createMutation = trpc.admin.products.create.useMutation({
     onSuccess: () => {
       toast.success("Product created");
@@ -131,7 +130,7 @@ export default function AdminProducts() {
     setDialogOpen(true);
   };
 
-  const compressImage = (file: File, maxDim = 800, quality = 0.7): Promise<string> =>
+  const compressImage = (file: File, maxDim = 600, quality = 0.65): Promise<string> =>
     new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(file);
@@ -221,7 +220,7 @@ export default function AdminProducts() {
     }
     const payload = {
       title: form.title.trim(),
-      imageUrl: form.images[0] ?? (form.imageUrl.trim() || null),
+      imageUrl: form.images.length > 0 ? null : (form.imageUrl.trim() || null),
       images: form.images.length > 0 ? form.images : null,
       priceCents,
       categoryId: form.categoryId !== "none" ? Number(form.categoryId) : null,
