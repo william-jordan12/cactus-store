@@ -11,10 +11,10 @@ type UiMessage = {
 
 function getVisitorId(): string {
   const key = "store_chat_visitor_id";
-  let id = localStorage.getItem(key);
+  let id = sessionStorage.getItem(key);
   if (!id) {
     id = crypto.randomUUID();
-    localStorage.setItem(key, id);
+    sessionStorage.setItem(key, id);
   }
   return id;
 }
@@ -75,7 +75,7 @@ export default function SupportChat() {
   const pollQuery = trpc.chat.poll.useQuery(
     { conversationId: visitorId, afterId: lastPolledId || undefined },
     {
-      refetchInterval: 120000,
+      refetchInterval: 3000,
       enabled: true,
     }
   );
