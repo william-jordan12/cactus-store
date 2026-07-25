@@ -87,7 +87,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
             <Link href="/" className="hover:text-primary whitespace-nowrap transition-colors">Home</Link>
             <Link href="/about" className="hover:text-primary whitespace-nowrap transition-colors">About Us</Link>
             <a href="/#shop" className="hover:text-primary whitespace-nowrap transition-colors">Shop</a>
-            <Link href="/reviews" className="hover:text-primary whitespace-nowrap transition-colors">Reviews</Link>
+            <a href="/#reviews" className="hover:text-primary whitespace-nowrap transition-colors">Reviews</a>
             <Link href="/faq" className="hover:text-primary whitespace-nowrap transition-colors">FAQ</Link>
             <Link href="/cart" className="hover:text-primary whitespace-nowrap transition-colors">Cart</Link>
             {settings?.contactEmail && (
@@ -114,7 +114,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
               <Link href="/" className="hover:text-white transition-colors">Home</Link>
               <Link href="/about" className="hover:text-white transition-colors">About Us</Link>
               <a href="/#shop" className="hover:text-white transition-colors">Shop</a>
-              <Link href="/reviews" className="hover:text-white transition-colors">Reviews</Link>
+              <a href="/#reviews" className="hover:text-white transition-colors">Reviews</a>
               <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
               {settings?.contactEmail ? (
                 <a href={`mailto:${settings.contactEmail}`} className="hover:text-white transition-colors">Contact Us</a>

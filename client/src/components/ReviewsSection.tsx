@@ -157,6 +157,7 @@ export default function ReviewsSection() {
 
   return (
     <section
+      id="reviews"
       ref={sectionRef}
       className="bg-[oklch(0.97_0.01_140)] border-t border-border"
     >
