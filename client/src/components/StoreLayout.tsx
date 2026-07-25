@@ -29,6 +29,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
     { href: "/#shop", label: "Shop", anchor: true },
     { href: "/#reviews", label: "Reviews", anchor: true },
     { href: "/faq", label: "FAQ" },
+    { href: "/blog", label: "Blog" },
     { href: "/cart", label: "Cart" },
     ...(settings?.contactEmail ? [{ href: `mailto:${settings.contactEmail}`, label: "Contact Us", anchor: true }] : []),
   ];
@@ -191,6 +192,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
               <a href="/#shop" className="hover:text-white transition-colors">Shop</a>
               <a href="/#reviews" className="hover:text-white transition-colors">Reviews</a>
               <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
+              <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
               {settings?.contactEmail && (
                 <a href={`mailto:${settings.contactEmail}`} className="hover:text-white transition-colors">Contact Us</a>
               )}

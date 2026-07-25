@@ -17,6 +17,7 @@ import AdminOrders from "./pages/admin/Orders";
 import AdminSettings from "./pages/admin/Settings";
 import About from "./pages/About";
 import FAQ from "./pages/FAQ";
+import Blog from "./pages/Blog";
 import Shipping from "./pages/Shipping";
 import Returns from "./pages/Returns";
 import Terms from "./pages/Terms";
@@ -30,6 +31,7 @@ function Router() {
       <Route path={"/checkout/success"} component={CheckoutSuccess} />
       <Route path={"/about"} component={About} />
       <Route path={"/faq"} component={FAQ} />
+      <Route path={"/blog"} component={Blog} />
       <Route path={"/shipping"} component={Shipping} />
       <Route path={"/returns"} component={Returns} />
       <Route path={"/terms"} component={Terms} />
