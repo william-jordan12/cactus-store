@@ -1,6 +1,5 @@
 import FeaturedCategories from "@/components/FeaturedCategories";
 import HeroCarousel from "@/components/HeroCarousel";
-import Newsletter from "@/components/Newsletter";
 import StoreLayout from "@/components/StoreLayout";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import { Button } from "@/components/ui/button";
@@ -263,7 +262,6 @@ export default function Home() {
         </div>
       </section>
 
-      <Newsletter />
     </StoreLayout>
   );
 }
