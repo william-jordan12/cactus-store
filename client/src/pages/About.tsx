@@ -13,7 +13,7 @@ export default function About() {
             About Cactus Store
           </h1>
           <p className="text-white/70 text-lg">
-            Passionate about bringing unique, ethically sourced cacti and succulents to collectors worldwide.
+            Sourcing rare cacti and seeds from our greenhouse to collectors around the world.
           </p>
         </div>
       </section>
@@ -22,7 +22,7 @@ export default function About() {
         <div>
           <h2 className="font-display text-2xl font-bold mb-4">Who We Are</h2>
           <p className="text-muted-foreground leading-relaxed">
-            We are a small, dedicated team of plant enthusiasts based in the southern United States. What started as a backyard hobby quickly grew into a full-time passion for cultivating and sharing rare and unusual cactus varieties with fellow collectors around the world.
+            We're a small team of plant growers based in the southern United States. What started as a backyard hobby turned into a full-time operation — we grow and ship rare cactus varieties to collectors worldwide.
           </p>
         </div>
 
@@ -59,16 +59,16 @@ export default function About() {
             <div>
               <h3 className="font-semibold mb-1">Collector Focused</h3>
               <p className="text-sm text-muted-foreground">
-                From beginner-friendly species to rare specimens, we curate our catalog for collectors of all levels.
+                From beginner-friendly species to rare specimens, our catalog covers a wide range of difficulty levels.
               </p>
             </div>
           </div>
         </div>
 
         <div>
-          <h2 className="font-display text-2xl font-bold mb-4">Our Mission</h2>
+          <h2 className="font-display text-2xl font-bold mb-4">What We're About</h2>
           <p className="text-muted-foreground leading-relaxed">
-            We believe everyone deserves access to beautiful, unique plants — no matter where they live. Our goal is to make rare and fascinating cacti accessible to enthusiasts everywhere while maintaining the highest standards of ethical cultivation and customer care.
+            We grow what we sell. Every plant and seed comes from our own greenhouse or from growers we trust. Our goal is simple: make it easy for collectors anywhere in the world to get healthy, greenhouse-grown cacti — without supporting wild collection.
           </p>
         </div>
       </section>

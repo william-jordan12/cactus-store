@@ -169,21 +169,19 @@ export default function Home() {
             </h2>
             <div className="prose prose-sm text-muted-foreground leading-relaxed space-y-4">
               <p>
-                Every plant and seed in our collection is sourced from trusted greenhouse cultivators
-                who share our commitment to ethical propagation. We work exclusively with growers who
-                cultivate under controlled, sustainable conditions — never removing specimens from
-                their natural habitats.
+                Every plant and seed in our catalog is sourced from trusted greenhouse growers
+                who propagate under controlled conditions — never pulled from the wild.
               </p>
               <p>
-                Whether you're an experienced collector of Ariocarpus and Astrophytum or just starting
-                your first Lophophora from seed, each order is inspected before shipping. We package
-                bare-root plants in moisture-controlled wrapping with insulated outer containers,
-                and seeds go out in sterile, sealed envelopes with germination instructions.
+                Whether you've been collecting Ariocarpus and Astrophytum for years or you're starting
+                your first Lophophora from seed, every order is inspected before it ships. Plants go
+                out bare-root in moisture-controlled wrapping, and seeds ship in sterile envelopes
+                with germination instructions.
               </p>
               <p>
-                Our team includes active growers who've been cultivating cacti for over a decade. If
-                you need advice on substrate mix, light levels, or winter dormancy schedules, reach out
-                — we'd rather help you succeed than see another plant end up in the compost.
+                We grow most of what we sell, and the rest comes from growers we know personally. If
+                you need help with substrate, light, or dormancy schedules — reach out. We'd rather
+                help you keep a plant alive than sell you another one.
               </p>
             </div>
           </div>
@@ -218,7 +216,7 @@ export default function Home() {
               </h2>
               <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Once established, most desert cacti are among the lowest-maintenance plants you can
-                grow. The key is resisting the urge to overwater. Let the soil dry completely between
+                grow. The hard part is not overwatering. Let the soil dry completely between
                 waterings — during winter dormancy, some species can go months without a drop.
               </p>
               <p className="text-muted-foreground text-sm leading-relaxed">
@@ -246,9 +244,8 @@ export default function Home() {
               are widely available to collectors without restriction.
             </p>
             <p>
-              We encourage all customers to familiarize themselves with their local regulations
-              before ordering. Responsible cultivation means respecting both the law and the
-              ecological significance of these plants. Every species we offer is greenhouse-propagated,
+              We recommend checking your local regulations before ordering. Responsible cultivation
+              means respecting both the law and the ecological significance of these plants. Every species we offer is greenhouse-propagated,
               never wild-collected.
             </p>
           </div>

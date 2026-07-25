@@ -86,7 +86,7 @@ export default function SupportChat() {
       return "Our seeds are freshly harvested and tested for viability. Most species germinate within 7-14 days in warm conditions. Check the care card included with your order for specific instructions.";
     if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey"))
       return "Hello! Great to have you here. What can we help you with today?";
-    return "Thanks for your message! Our team will get back to you shortly. In the meantime, feel free to check our FAQ page for instant answers to common questions.";
+    return "Thanks for reaching out! We'll get back to you as soon as we can. Check our FAQ page in the meantime — it covers most common questions.";
   };
 
   return (

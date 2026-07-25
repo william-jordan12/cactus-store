@@ -7,7 +7,7 @@ export default function Terms() {
         <div className="container max-w-3xl text-center">
           <p className="text-white/60 uppercase tracking-[0.25em] text-xs font-bold mb-3">Legal</p>
           <h1 className="font-display text-3xl md:text-5xl font-black mb-4">Terms & Conditions</h1>
-          <p className="text-white/70 text-lg">Please read before placing an order.</p>
+          <p className="text-white/70 text-lg">The fine print for ordering from us.</p>
         </div>
       </section>
       <section className="container py-16 max-w-3xl prose prose-sm text-muted-foreground">
@@ -29,7 +29,7 @@ export default function Terms() {
         <p>Due to the living nature of our products, returns are limited. Please refer to our <a href="/returns" className="text-primary underline">Returns & Refunds Policy</a> page for full details.</p>
 
         <h2 className="font-display text-xl font-bold text-foreground">6. Accuracy of Information</h2>
-        <p>We strive to provide accurate product descriptions and care instructions. However, we are not liable for damages resulting from incorrect care practices followed by the customer.</p>
+        <p>We do our best to keep product descriptions and care instructions accurate. We are not liable for damages resulting from incorrect care practices followed by the customer.</p>
 
         <h2 className="font-display text-xl font-bold text-foreground">7. Limitation of Liability</h2>
         <p>Our total liability for any order shall not exceed the purchase price of the products in that order. We are not responsible for indirect, incidental, or consequential damages.</p>

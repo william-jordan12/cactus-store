@@ -8,7 +8,7 @@ export default function Returns() {
         <div className="container max-w-3xl text-center">
           <p className="text-white/60 uppercase tracking-[0.25em] text-xs font-bold mb-3">Policy</p>
           <h1 className="font-display text-3xl md:text-5xl font-black mb-4">Returns & Refunds</h1>
-          <p className="text-white/70 text-lg">Our commitment to your satisfaction.</p>
+          <p className="text-white/70 text-lg">How we handle returns and refunds.</p>
         </div>
       </section>
       <section className="container py-16 max-w-3xl space-y-10">
@@ -18,7 +18,7 @@ export default function Returns() {
             <h3 className="font-semibold text-amber-800 mb-1">Live Plant Disclaimer</h3>
             <p className="text-sm text-amber-700">
               Due to the living and perishable nature of our products, we generally cannot accept returns on live plants.
-              However, we stand behind the quality of every order.
+              That said, if something goes wrong we'll make it right.
             </p>
           </div>
         </div>
