@@ -11,6 +11,7 @@ import { ImageOff, PackageOpen, ShoppingCart } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Home() {
   const searchString = useSearch();
@@ -18,6 +19,14 @@ export default function Home() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [search, setSearch] = useState(urlSearch);
   const { addItem } = useCart();
+  const queryClient = useQueryClient();
+
+  const prefetchProduct = (id: number) => {
+    queryClient.prefetchQuery({
+      queryKey: trpc.store.product.queryOptions({ id }),
+      staleTime: 5 * 60 * 1000,
+    });
+  };
 
   useEffect(() => {
     setSearch(urlSearch);
@@ -128,7 +137,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
             {products.map(product => (
-              <Link key={product.id} href={`/product/${product.id}`} className="group flex flex-col">
+              <Link key={product.id} href={`/product/${product.id}`} className="group flex flex-col" onMouseEnter={() => prefetchProduct(product.id)}>
                 <div className="aspect-[4/5] bg-muted/40 rounded-lg overflow-hidden mb-3 flex items-center justify-center">
                   {product.imageUrl ? (
                     <img src={product.imageUrl} alt={product.title} loading="lazy" className="h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" />

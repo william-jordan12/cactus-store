@@ -4,7 +4,7 @@ import SupportChat from "@/components/SupportChat";
 import { useCart } from "@/contexts/CartContext";
 import { trpc } from "@/lib/trpc";
 import { Mail, Menu, Search, ShoppingCart, Sprout, X } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
@@ -17,11 +17,22 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   const [open, setOpen] = useState(false);
   const isAdmin = isAuthenticated && user?.role === "admin";
   const storeName = settings?.storeName || "Peyote Seeds Farm";
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     navigate(`/shop?search=${encodeURIComponent(searchTerm)}`);
   };
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value.trim()) return;
+    debounceRef.current = setTimeout(() => {
+      navigate(`/shop?search=${encodeURIComponent(value)}`);
+    }, 400);
+  }, [navigate]);
 
   const isActive = (href: string) => {
     if (href === "/") return location === "/";
@@ -128,7 +139,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
             <div className="flex w-full border border-border rounded-full overflow-hidden bg-muted/40 focus-within:ring-2 focus-within:ring-ring/40">
               <input
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={e => handleSearchChange(e.target.value)}
                 placeholder="Search products…"
                 className="flex-1 bg-transparent px-4 py-2 text-sm outline-none"
               />

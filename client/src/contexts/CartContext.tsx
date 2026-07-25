@@ -45,6 +45,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items]);
 
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (Array.isArray(parsed)) setItems(parsed);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   const addItem = useCallback((item: Omit<CartItem, "quantity">, quantity = 1) => {
     setItems(prev => {
       const existing = prev.find(i => i.productId === item.productId);

@@ -30,7 +30,7 @@ import {
   Trash2,
   Wallet,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 
@@ -105,20 +105,42 @@ function PaymentLogo({ method }: { method: string }) {
   }
 }
 
+const CHECKOUT_KEY = "store_checkout_v1";
+
+function loadCheckout() {
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function saveCheckout(data: Record<string, string | boolean>) {
+  try { sessionStorage.setItem(CHECKOUT_KEY, JSON.stringify(data)); } catch { /* */ }
+}
+
 export default function Cart() {
   const { items, totalCents, updateQuantity, removeItem, clearCart } = useCart();
   const { data: settings } = trpc.store.settings.useQuery();
   const placeOrder = trpc.store.placeOrder.useMutation();
 
+  const saved = loadCheckout();
+
   const [step, setStep] = useState<"cart" | "checkout" | "contact">("cart");
   const [selectedPayment, setSelectedPayment] = useState<string>("");
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [shippingAddress, setShippingAddress] = useState("");
-  const [billingAddress, setBillingAddress] = useState("");
-  const [sameAsShipping, setSameAsShipping] = useState(true);
+  const [name, setName] = useState(saved?.name ?? "");
+  const [email, setEmail] = useState(saved?.email ?? "");
+  const [phone, setPhone] = useState(saved?.phone ?? "");
+  const [shippingAddress, setShippingAddress] = useState(saved?.shippingAddress ?? "");
+  const [billingAddress, setBillingAddress] = useState(saved?.billingAddress ?? "");
+  const [sameAsShipping, setSameAsShipping] = useState(saved?.sameAsShipping ?? true);
+
+  useEffect(() => {
+    if (step === "checkout") {
+      saveCheckout({ name, email, phone, shippingAddress, billingAddress, sameAsShipping: String(sameAsShipping) });
+    }
+  }, [step, name, email, phone, shippingAddress, billingAddress, sameAsShipping]);
 
   const [placedOrder, setPlacedOrder] = useState<{
     orderId: number;

@@ -6,12 +6,21 @@ import { ImageOff, PackageOpen, ShoppingCart } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Shop() {
   const searchString = useSearch();
   const urlSearch = useMemo(() => new URLSearchParams(searchString).get("search") ?? "", [searchString]);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const { addItem } = useCart();
+  const queryClient = useQueryClient();
+
+  const prefetchProduct = (id: number) => {
+    queryClient.prefetchQuery({
+      queryKey: trpc.store.product.queryOptions({ id }),
+      staleTime: 5 * 60 * 1000,
+    });
+  };
 
   const { data: categories } = trpc.store.categories.useQuery();
   const { data: products, isLoading } = trpc.store.products.useQuery({
@@ -101,6 +110,7 @@ export default function Shop() {
                 key={product.id}
                 href={`/product/${product.id}`}
                 className="group flex flex-col"
+                onMouseEnter={() => prefetchProduct(product.id)}
               >
                 <div className="aspect-[4/5] bg-muted/40 rounded-lg overflow-hidden mb-3 flex items-center justify-center">
                   {product.imageUrl ? (
