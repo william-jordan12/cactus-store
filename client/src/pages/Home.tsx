@@ -1,3 +1,4 @@
+import ReviewsSection from "@/components/ReviewsSection";
 import StoreLayout from "@/components/StoreLayout";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
@@ -215,6 +216,8 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      <ReviewsSection />
     </StoreLayout>
   );
 }

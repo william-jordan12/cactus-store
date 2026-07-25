@@ -15,6 +15,8 @@ import AdminProducts from "./pages/admin/Products";
 import AdminCategories from "./pages/admin/Categories";
 import AdminOrders from "./pages/admin/Orders";
 import AdminSettings from "./pages/admin/Settings";
+import About from "./pages/About";
+import FAQ from "./pages/FAQ";
 
 function Router() {
   return (
@@ -22,6 +24,8 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/cart"} component={Cart} />
       <Route path={"/checkout/success"} component={CheckoutSuccess} />
+      <Route path={"/about"} component={About} />
+      <Route path={"/faq"} component={FAQ} />
 
       {/* Hidden admin login */}
       <Route path={"/manager-login"} component={ManagerLogin} />
