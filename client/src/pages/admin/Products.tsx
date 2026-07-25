@@ -85,7 +85,7 @@ export default function AdminProducts() {
     utils.store.products.invalidate();
   };
 
-  const uploadMutation = trpc.admin.uploadImage.useMutation();
+  const uploadMutation = trpc.admin.products.uploadImage.useMutation();
   const createMutation = trpc.admin.products.create.useMutation({
     onSuccess: () => {
       toast.success("Product created");
