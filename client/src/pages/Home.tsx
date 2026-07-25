@@ -1,5 +1,9 @@
+import FeaturedCategories from "@/components/FeaturedCategories";
+import HeroCarousel from "@/components/HeroCarousel";
+import Newsletter from "@/components/Newsletter";
 import ReviewsSection from "@/components/ReviewsSection";
 import StoreLayout from "@/components/StoreLayout";
+import WhyChooseUs from "@/components/WhyChooseUs";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice } from "@/lib/money";
@@ -8,8 +12,6 @@ import { ImageOff, Leaf, PackageOpen, ShieldCheck, ShoppingCart, Truck } from "l
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
-
-const HERO_IMAGE = "/manus-storage/hero-cactus_190fb540.jpg";
 
 export default function Home() {
   const searchString = useSearch();
@@ -46,35 +48,8 @@ export default function Home() {
 
   return (
     <StoreLayout>
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-[oklch(0.22_0.04_155)]">
-        <img
-          src={HERO_IMAGE}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-30"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[oklch(0.18_0.03_155)]/90 to-transparent" />
-        <div className="container relative py-20 md:py-28 max-w-none">
-          <div className="max-w-xl">
-            <p className="text-white/70 uppercase tracking-[0.25em] text-xs font-bold mb-3">
-              Greenhouse grown · Ethically sourced
-            </p>
-            <h1 className="font-display text-3xl md:text-5xl font-black text-white leading-tight mb-4">
-              Authentic Cactus Plants &amp; Seeds
-            </h1>
-            <p className="text-white/80 mb-6 md:text-lg">
-              Fresh, viable seeds and healthy plants with discreet worldwide shipping and secure checkout.
-            </p>
-            <Button
-              size="lg"
-              className="uppercase font-bold tracking-wide"
-              onClick={() => document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" })}
-            >
-              Shop Now
-            </Button>
-          </div>
-        </div>
-      </section>
+      {/* Hero Carousel */}
+      <HeroCarousel />
 
       {/* Trust strip */}
       <section className="border-b border-border bg-secondary/60">
@@ -93,6 +68,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Featured Categories */}
+      <FeaturedCategories />
 
       {/* Catalog */}
       <section id="shop" className="container py-12">
@@ -217,7 +195,14 @@ export default function Home() {
         )}
       </section>
 
+      {/* Why Choose Us */}
+      <WhyChooseUs />
+
+      {/* Reviews */}
       <ReviewsSection />
+
+      {/* Newsletter */}
+      <Newsletter />
     </StoreLayout>
   );
 }

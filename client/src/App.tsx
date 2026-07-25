@@ -17,6 +17,10 @@ import AdminOrders from "./pages/admin/Orders";
 import AdminSettings from "./pages/admin/Settings";
 import About from "./pages/About";
 import FAQ from "./pages/FAQ";
+import Shipping from "./pages/Shipping";
+import Returns from "./pages/Returns";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 function Router() {
   return (
@@ -26,6 +30,10 @@ function Router() {
       <Route path={"/checkout/success"} component={CheckoutSuccess} />
       <Route path={"/about"} component={About} />
       <Route path={"/faq"} component={FAQ} />
+      <Route path={"/shipping"} component={Shipping} />
+      <Route path={"/returns"} component={Returns} />
+      <Route path={"/terms"} component={Terms} />
+      <Route path={"/privacy"} component={Privacy} />
 
       {/* Hidden admin login */}
       <Route path={"/manager-login"} component={ManagerLogin} />
