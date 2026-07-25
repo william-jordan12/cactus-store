@@ -29,12 +29,25 @@ export async function getDb() {
         ssl: { rejectUnauthorized: false },
       });
       _db = drizzle(conn);
-      // Auto-migrate: add images column if missing
+      // Auto-migrate: add images column if missing, upgrade to MEDIUMTEXT if needed
       try {
         const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'images'");
         if ((cols as any[]).length === 0) {
-          await conn.execute("ALTER TABLE products ADD COLUMN `images` TEXT AFTER `imageUrl`");
+          await conn.execute("ALTER TABLE products ADD COLUMN `images` MEDIUMTEXT AFTER `imageUrl`");
           console.log("[Database] Added 'images' column to products table");
+        } else {
+          const [colType] = await conn.execute("SHOW COLUMNS FROM products WHERE Field='images'");
+          const type = (colType as any[])[0]?.Type?.toLowerCase() ?? "";
+          if (type === "text") {
+            await conn.execute("ALTER TABLE products MODIFY COLUMN `images` MEDIUMTEXT");
+            console.log("[Database] Upgraded 'images' column to MEDIUMTEXT");
+          }
+        }
+        const [urlCol] = await conn.execute("SHOW COLUMNS FROM products WHERE Field='imageUrl'");
+        const urlType = (urlCol as any[])[0]?.Type?.toLowerCase() ?? "";
+        if (urlType === "text") {
+          await conn.execute("ALTER TABLE products MODIFY COLUMN `imageUrl` MEDIUMTEXT");
+          console.log("[Database] Upgraded 'imageUrl' column to MEDIUMTEXT");
         }
       } catch (e: any) {
         console.warn("[Database] images column migration:", e?.message);

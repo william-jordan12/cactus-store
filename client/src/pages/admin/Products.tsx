@@ -131,6 +131,27 @@ export default function AdminProducts() {
     setDialogOpen(true);
   };
 
+  const compressImage = (file: File, maxDim = 800, quality = 0.7): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round((height / width) * maxDim); width = maxDim; }
+          else { width = Math.round((width / height) * maxDim); height = maxDim; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Failed to load image")); };
+      img.src = url;
+    });
+
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const newImages = [...form.images];
     setUploading(true);
@@ -144,21 +165,15 @@ export default function AdminProducts() {
         continue;
       }
       try {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const result = await uploadMutation.mutateAsync({ data: base64, filename: file.name });
-        newImages.push(result.url);
+        const compressed = await compressImage(file);
+        newImages.push(compressed);
       } catch (e: any) {
-        toast.error(`Failed to upload ${file.name}: ${e.message}`);
+        toast.error(`Failed to process ${file.name}: ${e.message}`);
       }
     }
     setForm(f => ({ ...f, images: newImages }));
     setUploading(false);
-  }, [form.images, uploadMutation]);
+  }, [form.images]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

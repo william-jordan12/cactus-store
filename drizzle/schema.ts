@@ -2,6 +2,7 @@ import {
   boolean,
   decimal,
   int,
+  mediumText,
   mysqlEnum,
   mysqlTable,
   text,
@@ -48,8 +49,8 @@ export type InsertCategory = typeof categories.$inferInsert;
 export const products = mysqlTable("products", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
-  imageUrl: text("imageUrl"),
-  images: text("images"),
+  imageUrl: mediumText("imageUrl"),
+  images: mediumText("images"),
   priceCents: int("priceCents").notNull(),
   categoryId: int("categoryId"),
   description: text("description"),
