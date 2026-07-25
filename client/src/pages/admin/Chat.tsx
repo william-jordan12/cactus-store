@@ -13,7 +13,7 @@ export default function AdminChat() {
   });
   const messagesQuery = trpc.chat.messages.useQuery(
     { conversationId: selectedConv! },
-    { enabled: !!selectedConv, refetchInterval: 3000 }
+    { enabled: !!selectedConv, refetchInterval: 5000 }
   );
 
   useEffect(() => {
