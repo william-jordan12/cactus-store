@@ -37,7 +37,11 @@ import { toast } from "sonner";
 function PaymentLogo({ method }: { method: string }) {
   switch (method) {
     case "Cash App":
-      return <img src="https://static.afterpaycdn.com/en-US/integration/logo/lockup/cashapppay-color-32.svg" alt="Cash App Pay" className="h-5" />;
+      return (
+        <div className="h-6 w-6 rounded bg-[#00D632] flex items-center justify-center">
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 7.215h-2.15c-.18 0-.327.147-.327.327v1.403c-.353-.25-.776-.398-1.232-.398-1.143 0-2.07.927-2.07 2.07 0 1.144.927 2.071 2.07 2.071.457 0 .88-.148 1.232-.4v1.04c0 .684.556 1.24 1.24 1.24h2.15c.18 0 .327-.147.327-.327V7.542c0-.18-.147-.327-.327-.327zm-7.055 0h-2.15c-.18 0-.327.147-.327.327v5.93c0 .18.147.327.327.327h2.15c.18 0 .327-.147.327-.327V7.542c0-.18-.147-.327-.327-.327zm-3.577 0H5.112c-.18 0-.327.147-.327.327v5.93c0 .18.147.327.327.327h2.15c.18 0 .327-.147.327-.327V7.542c0-.18-.147-.327-.327-.327z"/></svg>
+        </div>
+      );
     case "PayPal":
       return (
         <div className="h-6 w-6 rounded bg-[#003087] flex items-center justify-center">
@@ -289,45 +293,47 @@ Please send me the payment instructions or credentials for ${placedOrder.payment
           {/* Cart items */}
           <div className="bg-white border border-border rounded-md divide-y divide-border">
             {items.map(item => (
-              <div key={item.productId} className="flex gap-4 p-4 items-center">
-                <div className="h-20 w-20 rounded-md bg-muted/50 overflow-hidden flex items-center justify-center shrink-0">
+              <div key={item.productId} className="flex gap-3 p-3 sm:p-4 items-start sm:items-center">
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-md bg-muted/50 overflow-hidden flex items-center justify-center shrink-0">
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
                   ) : (
-                    <ImageOff className="h-6 w-6 text-muted-foreground/30" />
+                    <ImageOff className="h-5 w-5 text-muted-foreground/30" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm text-primary leading-snug mb-0.5 truncate">{item.title}</div>
-                  <div className="text-xs text-muted-foreground">{formatPrice(item.priceCents)} each</div>
+                  <div className="text-xs text-muted-foreground mb-2">{formatPrice(item.priceCents)} each</div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 border border-border rounded-full px-1">
+                      <button
+                        onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                        className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                        aria-label="Decrease quantity"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="w-7 text-center text-sm font-bold">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                        className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                        aria-label="Increase quantity"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm">{formatPrice(item.priceCents * item.quantity)}</span>
+                      <button
+                        onClick={() => removeItem(item.productId)}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                        aria-label={`Remove ${item.title}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 border border-border rounded-full px-1">
-                  <button
-                    onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                    className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-                    aria-label="Decrease quantity"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
-                  <button
-                    onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                    className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-                    aria-label="Increase quantity"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <div className="w-20 text-right font-bold text-sm">
-                  {formatPrice(item.priceCents * item.quantity)}
-                </div>
-                <button
-                  onClick={() => removeItem(item.productId)}
-                  className="text-muted-foreground hover:text-destructive transition-colors"
-                  aria-label={`Remove ${item.title}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
               </div>
             ))}
             <div className="p-4 flex justify-between items-center">
