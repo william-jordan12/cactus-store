@@ -23,10 +23,13 @@ import Returns from "./pages/Returns";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 
+import ProductDetail from "./pages/ProductDetail";
+
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/product/:id"} component={ProductDetail} />
       <Route path={"/cart"} component={Cart} />
       <Route path={"/checkout/success"} component={CheckoutSuccess} />
       <Route path={"/about"} component={About} />

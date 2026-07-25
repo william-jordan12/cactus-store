@@ -10,7 +10,7 @@ import { formatPrice } from "@/lib/money";
 import { trpc } from "@/lib/trpc";
 import { ImageOff, Leaf, PackageOpen, ShieldCheck, ShoppingCart, Truck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -153,8 +153,9 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {products.map(product => (
-              <div
+              <Link
                 key={product.id}
+                href={`/product/${product.id}`}
                 className="group bg-white border border-border rounded-md overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
               >
                 <div className="aspect-square bg-muted/50 overflow-hidden flex items-center justify-center">
@@ -182,14 +183,14 @@ export default function Home() {
                   <div className="font-bold text-foreground mb-3 mt-auto">{formatPrice(product.priceCents)}</div>
                   <Button
                     size="sm"
-                    className="uppercase text-xs font-bold tracking-wide w-full"
-                    onClick={() => handleAdd(product)}
+                    className="uppercase text-xs font-bold tracking-wide w-full relative z-10"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAdd(product); }}
                   >
                     <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
                     Add to Cart
                   </Button>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
