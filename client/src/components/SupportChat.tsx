@@ -53,7 +53,7 @@ export default function SupportChat() {
   const pollQuery = trpc.chat.poll.useQuery(
     { conversationId: visitorId, afterId: lastPolledId || undefined },
     {
-      refetchInterval: open ? 3000 : false,
+      refetchInterval: open ? 120000 : false,
       enabled: open,
     }
   );
