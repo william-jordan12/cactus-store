@@ -176,7 +176,6 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
         billingAddress: billing.trim(),
         paymentMethod: selectedPayment as never,
       });
-      const billing = sameAsShipping ? shippingAddress : billingAddress;
       setPlacedOrder({
         orderId: result.orderId,
         totalCents: result.totalCents,
