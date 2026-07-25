@@ -29,6 +29,14 @@ export async function getDb() {
         ssl: { rejectUnauthorized: false },
       });
       _db = drizzle(conn);
+      // Auto-migrate: add images column if missing
+      try {
+        await conn.execute("ALTER TABLE products ADD COLUMN `images` TEXT");
+        console.log("[Database] Added 'images' column to products table");
+      } catch (e: any) {
+        // Column already exists — ignore Duplicate column error
+        if (e?.code !== "ER_DUP_FIELDNAME") console.warn("[Database] ALTER products:", e?.message);
+      }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

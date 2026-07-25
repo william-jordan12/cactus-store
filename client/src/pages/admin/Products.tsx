@@ -32,20 +32,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatPrice, parsePriceToCents } from "@/lib/money";
 import { trpc } from "@/lib/trpc";
 import type { Product } from "../../../../drizzle/schema";
-import { ImageOff, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ImageOff, Loader2, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
 
 interface FormState {
   title: string;
   imageUrl: string;
+  images: string[];
   price: string;
   categoryId: string;
   description: string;
 }
 
-const EMPTY_FORM: FormState = { title: "", imageUrl: "", price: "", categoryId: "none", description: "" };
+const EMPTY_FORM: FormState = { title: "", imageUrl: "", images: [], price: "", categoryId: "none", description: "" };
+
+function parseProductImages(product: Product): string[] {
+  if (product.images) {
+    try {
+      const parsed = JSON.parse(product.images);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+  }
+  return product.imageUrl ? [product.imageUrl] : [];
+}
 
 export default function AdminProducts() {
   const utils = trpc.useUtils();
@@ -57,8 +68,10 @@ export default function AdminProducts() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Support the admin bar's "Add Product" quick link (/admin/products?new=1)
   useEffect(() => {
     if (new URLSearchParams(searchString).get("new") === "1") {
       setEditing(null);
@@ -72,6 +85,7 @@ export default function AdminProducts() {
     utils.store.products.invalidate();
   };
 
+  const uploadMutation = trpc.admin.uploadImage.useMutation();
   const createMutation = trpc.admin.products.create.useMutation({
     onSuccess: () => {
       toast.success("Product created");
@@ -105,9 +119,11 @@ export default function AdminProducts() {
 
   const openEdit = (product: Product) => {
     setEditing(product);
+    const images = parseProductImages(product);
     setForm({
       title: product.title,
       imageUrl: product.imageUrl ?? "",
+      images,
       price: (product.priceCents / 100).toFixed(2),
       categoryId: product.categoryId ? String(product.categoryId) : "none",
       description: product.description ?? "",
@@ -115,7 +131,70 @@ export default function AdminProducts() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = () => {
+  const handleFiles = useCallback(async (files: FileList | File[]) => {
+    const newImages = [...form.images];
+    setUploading(true);
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image`);
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 10MB limit`);
+        continue;
+      }
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const result = await uploadMutation.mutateAsync({ data: base64, filename: file.name });
+        newImages.push(result.url);
+      } catch (e: any) {
+        toast.error(`Failed to upload ${file.name}: ${e.message}`);
+      }
+    }
+    setForm(f => ({ ...f, images: newImages }));
+    setUploading(false);
+  }, [form.images, uploadMutation]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
+  }, [handleFiles]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  }, []);
+
+  const removeImage = (index: number) => {
+    setForm(f => {
+      const newImages = f.images.filter((_, i) => i !== index);
+      return { ...f, images: newImages, imageUrl: newImages[0] ?? "" };
+    });
+  };
+
+  const moveImage = (from: number, to: number) => {
+    setForm(f => {
+      const newImages = [...f.images];
+      const [moved] = newImages.splice(from, 1);
+      newImages.splice(to, 0, moved);
+      return { ...f, images: newImages, imageUrl: newImages[0] ?? "" };
+    });
+  };
+
+  const handleSubmit = async () => {
     const priceCents = parsePriceToCents(form.price);
     if (!form.title.trim()) {
       toast.error("Title is required");
@@ -127,7 +206,8 @@ export default function AdminProducts() {
     }
     const payload = {
       title: form.title.trim(),
-      imageUrl: form.imageUrl.trim() || null,
+      imageUrl: form.images[0] ?? (form.imageUrl.trim() || null),
+      images: form.images.length > 0 ? form.images : null,
       priceCents,
       categoryId: form.categoryId !== "none" ? Number(form.categoryId) : null,
       description: form.description.trim() || null,
@@ -140,7 +220,8 @@ export default function AdminProducts() {
   };
 
   const categoryName = (id: number | null) => categories?.find(c => c.id === id)?.name ?? "—";
-  const saving = createMutation.isPending || updateMutation.isPending;
+  const saving = createMutation.isPending || updateMutation.isPending || uploading;
+  const allImages = form.images.length > 0 ? form.images : (form.imageUrl ? [form.imageUrl] : []);
 
   return (
     <AdminLayout title="Products">
@@ -210,7 +291,7 @@ export default function AdminProducts() {
 
       {/* Create / edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Product" : "Add Product"}</DialogTitle>
             <DialogDescription>
@@ -227,20 +308,108 @@ export default function AdminProducts() {
                 placeholder="e.g. Lophophora Williamsii 4cm"
               />
             </div>
+
+            {/* Image Upload Zone */}
             <div className="space-y-1.5">
-              <Label htmlFor="p-image">Image URL</Label>
+              <Label>Product Images</Label>
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                  dragOver
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50 hover:bg-muted/50"
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={e => {
+                    if (e.target.files) handleFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">
+                  {uploading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
+                    </span>
+                  ) : (
+                    <>
+                      Drag & drop images here, or <span className="text-primary font-medium">browse</span>
+                    </>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">
+                  PNG, JPG, WebP up to 10MB each. First image is the main product image.
+                </p>
+              </div>
+            </div>
+
+            {/* Image previews */}
+            {allImages.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {allImages.map((url, i) => (
+                  <div key={i} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Image ${i + 1}`}
+                      className="h-20 w-20 rounded border border-border object-cover"
+                    />
+                    {i === 0 && (
+                      <span className="absolute -top-1 -left-1 bg-primary text-white text-[9px] font-bold px-1 rounded">
+                        MAIN
+                      </span>
+                    )}
+                    <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {i > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
+                          className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
+                        >
+                          {"\u2190"}
+                        </button>
+                      )}
+                      {i < allImages.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
+                          className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
+                        >
+                          {"\u2192"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                        className="bg-destructive text-white rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-destructive/80"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Manual URL fallback */}
+            <div className="space-y-1.5">
+              <Label htmlFor="p-image">Or paste Image URL</Label>
               <Input
                 id="p-image"
                 value={form.imageUrl}
                 onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
                 placeholder="https://example.com/photo.jpg"
               />
-              {form.imageUrl && (
-                <div className="h-24 w-24 rounded border border-border overflow-hidden mt-2">
-                  <img src={form.imageUrl} alt="Preview" className="h-full w-full object-cover" />
-                </div>
-              )}
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="p-price">Price (USD) *</Label>

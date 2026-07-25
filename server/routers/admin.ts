@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as db from "../db";
+import { storagePut } from "../storage";
 import { protectedProcedure, router } from "../_core/trpc";
+import { ENV } from "../_core/env";
 
 /** Only users with role=admin may access management procedures. */
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -14,6 +16,7 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 const productInput = z.object({
   title: z.string().trim().min(1).max(255),
   imageUrl: z.string().trim().max(2000).nullish(),
+  images: z.array(z.string().trim().max(2000)).nullish(),
   priceCents: z.number().int().min(0),
   categoryId: z.number().int().positive().nullish(),
   description: z.string().trim().max(10000).nullish(),
@@ -23,10 +26,34 @@ export const adminRouter = router({
   /** Products CRUD */
   products: router({
     list: adminProcedure.query(() => db.listProducts()),
+    uploadImage: adminProcedure
+      .input(z.object({ data: z.string().min(1), filename: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const { data, filename } = input;
+        const match = data.match(/^data:(.+);base64,(.+)$/);
+        if (!match) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid base64 data" });
+        const contentType = match[1];
+        const buffer = Buffer.from(match[2], "base64");
+        const ext = filename.split(".").pop() || "jpg";
+        const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/\.[^.]+$/, "");
+        const key = `products/${safeName}_${Date.now()}.${ext}`;
+        try {
+          if (ENV.forgeApiUrl && ENV.forgeApiKey) {
+            const result = await storagePut(key, buffer, contentType);
+            return { url: result.url };
+          }
+        } catch (e) {
+          console.warn("[Upload] Forge storage failed, falling back to data URL:", e);
+        }
+        return { url: data };
+      }),
     create: adminProcedure.input(productInput).mutation(async ({ input }) => {
+      const images = input.images?.filter(Boolean) ?? [];
+      const imageUrl = input.imageUrl ?? images[0] ?? null;
       const id = await db.createProduct({
         title: input.title,
-        imageUrl: input.imageUrl ?? null,
+        imageUrl,
+        images: JSON.stringify(images),
         priceCents: input.priceCents,
         categoryId: input.categoryId ?? null,
         description: input.description ?? null,
@@ -37,9 +64,12 @@ export const adminRouter = router({
       .input(productInput.extend({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
+        const images = data.images?.filter(Boolean) ?? [];
+        const imageUrl = data.imageUrl ?? images[0] ?? null;
         await db.updateProduct(id, {
           title: data.title,
-          imageUrl: data.imageUrl ?? null,
+          imageUrl,
+          images: JSON.stringify(images),
           priceCents: data.priceCents,
           categoryId: data.categoryId ?? null,
           description: data.description ?? null,
