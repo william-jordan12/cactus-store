@@ -71,7 +71,6 @@ export default function Cart() {
 
   const minimumOrderCents = settings?.minimumOrderCents ?? 10000;
   const belowMinimum = totalCents < minimumOrderCents;
-  const paymentsEnabled = settings?.onlinePaymentsEnabled ?? false;
   const whatsappNumber = settings?.whatsappNumber ?? "";
   const contactEmail = settings?.contactEmail ?? "";
 
@@ -315,16 +314,9 @@ Please send me the payment instructions or credentials for ${placedOrder.payment
               </div>
             )}
 
-            {!paymentsEnabled && (
-              <div className="flex items-start gap-2 bg-muted border border-border text-muted-foreground rounded-md p-3 text-xs mb-4">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>Checkout is temporarily unavailable. Please check back soon.</span>
-              </div>
-            )}
-
             <Button
               onClick={() => setStep("checkout")}
-              disabled={belowMinimum || !paymentsEnabled}
+              disabled={belowMinimum}
               className="w-full h-12 font-bold uppercase tracking-wide text-sm"
             >
               <CreditCard className="h-5 w-5 mr-2" />

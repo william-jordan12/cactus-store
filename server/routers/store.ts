@@ -83,12 +83,6 @@ export const storeRouter = router({
     )
     .mutation(async ({ input }) => {
       const allSettings = await db.getAllSettings();
-      if (allSettings.onlinePaymentsEnabled !== "true") {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Online payments are currently disabled",
-        });
-      }
 
       // Re-price server-side from the database — never trust client prices.
       const lineItems: { title: string; unitPriceCents: number; quantity: number; productId: number }[] = [];
