@@ -219,11 +219,13 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
               )}
             </div>
             <div className="mt-4">
-              <div className="font-bold text-white uppercase text-xs mb-2 tracking-wide">We Accept</div>
-              <div className="flex gap-2">
-                <div className="h-8 w-12 rounded bg-white/10 flex items-center justify-center text-[10px] font-bold text-white/70">VISA</div>
-                <div className="h-8 w-12 rounded bg-white/10 flex items-center justify-center text-[10px] font-bold text-white/70">MC</div>
-                <div className="h-8 w-12 rounded bg-white/10 flex items-center justify-center text-[10px] font-bold text-white/70">AMEX</div>
+              <div className="font-bold text-white uppercase text-xs mb-2 tracking-wide">Payment Methods</div>
+              <div className="flex flex-wrap gap-1.5">
+                {["Cash App", "PayPal", "Venmo", "Zelle", "Bitcoin", "Apple Pay", "Chime", "Bank Transfer", "Crypto", "Wire Transfer"].map(method => (
+                  <span key={method} className="bg-white/10 rounded px-2 py-1 text-[10px] font-semibold text-white/70">
+                    {method}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
