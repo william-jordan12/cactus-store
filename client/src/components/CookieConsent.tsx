@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Cookie } from "lucide-react";
 
 const COOKIE_KEY = "store_cookie_consent";
 
@@ -17,44 +16,32 @@ export default function CookieConsent() {
 
   if (!show) return null;
 
-  const accept = () => {
-    localStorage.setItem(COOKIE_KEY, "accepted");
+  const handleChoice = (choice: "accepted" | "declined") => {
+    localStorage.setItem(COOKIE_KEY, choice);
     setShow(false);
   };
 
-  const decline = () => {
-    localStorage.setItem(COOKIE_KEY, "declined");
-    window.location.href = "https://www.google.com";
-  };
-
   return (
-    <div className="fixed inset-0 z-[300] bg-black/50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-        <div className="p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <Cookie className="h-5 w-5 text-primary" />
-            </div>
-            <h2 className="font-display text-lg font-black">We value your privacy</h2>
-          </div>
-          <p className="text-muted-foreground text-sm leading-relaxed mb-1">
-            We use cookies to improve your experience on our site, analyze traffic, and personalize content. By clicking &quot;Accept&quot;, you consent to the use of all cookies.
+    <div className="fixed bottom-0 left-0 right-0 z-[300] p-4 sm:p-6 pointer-events-none">
+      <div className="bg-[#1d2327] text-white rounded-xl shadow-2xl max-w-2xl w-full ml-auto pointer-events-auto">
+        <div className="p-5 sm:p-6">
+          <p className="text-sm leading-relaxed text-gray-300">
+            We use cookies to keep the site running and improve your experience. No third-party tracking. By continuing to use this site, you agree to our use of cookies.
           </p>
-          <p className="text-muted-foreground text-xs">
-            You can read more in our{" "}
-            <a href="/privacy" className="text-primary underline hover:text-primary/80">Privacy Policy</a>.
-          </p>
+          <a href="/privacy" className="text-xs text-gray-400 underline hover:text-gray-200 mt-2 inline-block transition-colors">
+            Privacy Policy
+          </a>
         </div>
-        <div className="border-t border-border px-5 py-3 flex gap-3 bg-secondary/30">
+        <div className="border-t border-white/10 px-5 sm:px-6 py-3 flex gap-3">
           <button
-            onClick={decline}
-            className="flex-1 h-10 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors"
+            onClick={() => handleChoice("declined")}
+            className="flex-1 h-9 rounded-lg border border-white/20 text-sm font-medium text-gray-400 hover:text-white hover:border-white/40 transition-colors"
           >
             Decline
           </button>
           <button
-            onClick={accept}
-            className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity"
+            onClick={() => handleChoice("accepted")}
+            className="flex-1 h-9 rounded-lg bg-[oklch(0.47_0.11_155)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
           >
             Accept
           </button>
