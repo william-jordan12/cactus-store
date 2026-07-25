@@ -4,7 +4,7 @@ import { Leaf, Sprout, Globe, Heart } from "lucide-react";
 export default function About() {
   return (
     <StoreLayout>
-      <section className="bg-[oklch(0.25_0.05_140)] text-white py-20">
+      <section className="bg-[oklch(0.22_0.04_155)] text-white py-20">
         <div className="container max-w-3xl text-center">
           <p className="text-white/60 uppercase tracking-[0.25em] text-xs font-bold mb-3">
             Our Story

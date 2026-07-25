@@ -42,7 +42,7 @@ export default function ManagerLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[oklch(0.2_0.04_140)] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[oklch(0.18_0.03_155)] px-4">
       <div className="w-full max-w-sm bg-white rounded-lg shadow-2xl p-8 text-center">
         <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <Lock className="h-7 w-7 text-primary" />

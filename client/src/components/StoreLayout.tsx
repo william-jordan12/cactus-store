@@ -50,7 +50,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
       <AdminBar />
 
       {/* Announcement bar */}
-      <div className="bg-[oklch(0.35_0.09_140)] text-white text-xs tracking-wide">
+      <div className="bg-[oklch(0.3_0.07_155)] text-white text-xs tracking-wide">
         <div className="container flex items-center justify-between h-8">
           <span className="font-semibold uppercase">Discreet worldwide shipping | 100% genuine seeds</span>
           <span className="hidden sm:flex items-center gap-1.5">
@@ -164,7 +164,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
       <main className="flex-1">{children}</main>
 
       {/* Footer */}
-      <footer className="bg-[oklch(0.25_0.05_140)] text-white/80 mt-16">
+      <footer className="bg-[oklch(0.22_0.04_155)] text-white/80 mt-16">
         <div className="container py-10 grid gap-8 md:grid-cols-3">
           <div>
             <div className="font-display text-lg font-black text-white uppercase mb-2">{storeName}</div>

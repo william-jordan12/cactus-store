@@ -47,13 +47,13 @@ export default function Home() {
   return (
     <StoreLayout>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-[oklch(0.25_0.05_140)]">
+      <section className="relative overflow-hidden bg-[oklch(0.22_0.04_155)]">
         <img
           src={HERO_IMAGE}
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-30"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[oklch(0.2_0.05_140)]/90 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[oklch(0.18_0.03_155)]/90 to-transparent" />
         <div className="container relative py-20 md:py-28 max-w-none">
           <div className="max-w-xl">
             <p className="text-white/70 uppercase tracking-[0.25em] text-xs font-bold mb-3">

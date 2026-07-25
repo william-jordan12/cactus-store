@@ -159,7 +159,7 @@ export default function ReviewsSection() {
     <section
       id="reviews"
       ref={sectionRef}
-      className="bg-[oklch(0.97_0.01_140)] border-t border-border"
+      className="bg-[oklch(0.97_0.005_155)] border-t border-border"
     >
       <div className="container py-16">
         <div
