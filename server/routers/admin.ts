@@ -15,8 +15,8 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 const productInput = z.object({
   title: z.string().trim().min(1).max(255),
-  imageUrl: z.string().trim().max(2000).nullish(),
-  images: z.array(z.string().trim().max(2000)).nullish(),
+  imageUrl: z.string().trim().max(10_000_000).nullish(),
+  images: z.array(z.string().trim().max(10_000_000)).nullish(),
   priceCents: z.number().int().min(0),
   categoryId: z.number().int().positive().nullish(),
   description: z.string().trim().max(10000).nullish(),
