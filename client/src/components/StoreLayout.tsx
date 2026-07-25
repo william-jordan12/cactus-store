@@ -2,9 +2,10 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import AdminBar from "@/components/AdminBar";
 import { useCart } from "@/contexts/CartContext";
 import { trpc } from "@/lib/trpc";
-import { Mail, Search, ShoppingCart, Sprout } from "lucide-react";
+import { Mail, Menu, Search, ShoppingCart, Sprout, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
@@ -12,12 +13,36 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   const { data: settings } = trpc.store.settings.useQuery();
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
+  const [open, setOpen] = useState(false);
   const isAdmin = isAuthenticated && user?.role === "admin";
   const storeName = settings?.storeName || "Peyote Seeds Farm";
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
     navigate(`/?search=${encodeURIComponent(searchTerm)}`);
+  };
+
+  const navLinks = [
+    { href: "/", label: "Home" },
+    { href: "/about", label: "About Us" },
+    { href: "/#shop", label: "Shop", anchor: true },
+    { href: "/#reviews", label: "Reviews", anchor: true },
+    { href: "/faq", label: "FAQ" },
+    { href: "/cart", label: "Cart" },
+    ...(settings?.contactEmail ? [{ href: `mailto:${settings.contactEmail}`, label: "Contact Us", anchor: true }] : []),
+  ];
+
+  const handleNavClick = (href: string, anchor?: boolean) => {
+    if (anchor) {
+      if (href.startsWith("/#")) {
+        const el = document.getElementById(href.slice(2));
+        if (el) { el.scrollIntoView({ behavior: "smooth" }); setOpen(false); return; }
+      }
+      window.location.href = href;
+    } else {
+      navigate(href);
+    }
+    setOpen(false);
   };
 
   return (
@@ -41,7 +66,48 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
       {/* Main header */}
       <header className="bg-white border-b border-border">
-        <div className="container flex items-center gap-4 py-4 flex-wrap">
+        <div className="container flex items-center gap-3 py-4 flex-wrap">
+          {/* Hamburger — mobile only */}
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <button className="md:hidden shrink-0 p-1 -ml-1 text-foreground/70 hover:text-primary transition-colors" aria-label="Menu">
+                <Menu className="h-6 w-6" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Sprout className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="font-display text-sm font-black text-primary uppercase">{storeName}</span>
+                </div>
+                <button onClick={() => setOpen(false)} className="p-1 text-muted-foreground hover:text-foreground" aria-label="Close menu">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <nav className="flex flex-col p-4">
+                {navLinks.map((link) => (
+                  <button
+                    key={link.href + link.label}
+                    onClick={() => handleNavClick(link.href, link.anchor)}
+                    className="text-left py-3 px-3 text-sm font-bold uppercase tracking-wide text-foreground/80 hover:text-primary hover:bg-primary/5 rounded-md transition-colors"
+                  >
+                    {link.label}
+                  </button>
+                ))}
+              </nav>
+              {settings?.contactEmail && (
+                <div className="border-t border-border px-5 py-4">
+                  <a href={`mailto:${settings.contactEmail}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+                    <Mail className="h-4 w-4" /> {settings.contactEmail}
+                  </a>
+                </div>
+              )}
+            </SheetContent>
+          </Sheet>
+
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center">
               <Sprout className="h-6 w-6 text-primary" />
@@ -81,17 +147,15 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           </Link>
         </div>
 
-        {/* Nav bar */}
-        <nav className="border-t border-border">
+        {/* Desktop nav bar — hidden on mobile */}
+        <nav className="border-t border-border hidden md:block">
           <div className="container flex items-center gap-6 h-10 text-[13px] font-bold uppercase tracking-wide text-foreground/80 overflow-x-auto">
-            <Link href="/" className="hover:text-primary whitespace-nowrap transition-colors">Home</Link>
-            <Link href="/about" className="hover:text-primary whitespace-nowrap transition-colors">About Us</Link>
-            <a href="/#shop" className="hover:text-primary whitespace-nowrap transition-colors">Shop</a>
-            <a href="/#reviews" className="hover:text-primary whitespace-nowrap transition-colors">Reviews</a>
-            <Link href="/faq" className="hover:text-primary whitespace-nowrap transition-colors">FAQ</Link>
-            <Link href="/cart" className="hover:text-primary whitespace-nowrap transition-colors">Cart</Link>
-            {settings?.contactEmail && (
-              <a href={`mailto:${settings.contactEmail}`} className="hover:text-primary whitespace-nowrap transition-colors">Contact Us</a>
+            {navLinks.map((link) =>
+              link.anchor ? (
+                <a key={link.href} href={link.href} className="hover:text-primary whitespace-nowrap transition-colors">{link.label}</a>
+              ) : (
+                <Link key={link.href} href={link.href} className="hover:text-primary whitespace-nowrap transition-colors">{link.label}</Link>
+              )
             )}
           </div>
         </nav>
