@@ -110,6 +110,12 @@ export const adminRouter = router({
   /** Orders tracker */
   orders: router({
     list: adminProcedure.query(() => db.listOrdersWithItems()),
+    delete: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await db.deleteOrder(input.id);
+        return { success: true };
+      }),
   }),
 
   /** Review moderation */

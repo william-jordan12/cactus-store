@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatPrice } from "@/lib/money";
 import { trpc } from "@/lib/trpc";
-import { Loader2, ShoppingBag } from "lucide-react";
+import { Loader2, ShoppingBag, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 const STATUS_STYLES: Record<string, string> = {
   paid: "bg-green-100 text-green-800 hover:bg-green-100",
@@ -12,8 +13,17 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function AdminOrders() {
+  const utils = trpc.useUtils();
   const { data: orders, isLoading } = trpc.admin.orders.list.useQuery(undefined, {
     refetchInterval: 15000,
+  });
+
+  const deleteOrder = trpc.admin.orders.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Order deleted");
+      utils.admin.orders.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
   });
 
   return (
@@ -45,6 +55,7 @@ export default function AdminOrders() {
                     <TableHead>Items Purchased</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Payment Status</TableHead>
+                    <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -70,6 +81,20 @@ export default function AdminOrders() {
                           {order.paymentStatus}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={() => {
+                            if (window.confirm("Delete this order?")) {
+                              deleteOrder.mutate({ id: order.id });
+                            }
+                          }}
+                          disabled={deleteOrder.isPending}
+                          className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          aria-label="Delete order"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -81,9 +106,23 @@ export default function AdminOrders() {
                 <div key={order.id} className="p-3 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">{order.customerName || "—"}</span>
-                    <Badge className={STATUS_STYLES[order.paymentStatus] ?? ""} variant="secondary">
-                      {order.paymentStatus}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className={STATUS_STYLES[order.paymentStatus] ?? ""} variant="secondary">
+                        {order.paymentStatus}
+                      </Badge>
+                      <button
+                        onClick={() => {
+                          if (window.confirm("Delete this order?")) {
+                            deleteOrder.mutate({ id: order.id });
+                          }
+                        }}
+                        disabled={deleteOrder.isPending}
+                        className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        aria-label="Delete order"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(order.createdAt).toLocaleDateString()} · {order.customerEmail || "—"}

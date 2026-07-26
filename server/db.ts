@@ -276,6 +276,13 @@ export async function listOrdersWithItems() {
   }));
 }
 
+export async function deleteOrder(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(orderItems).where(eq(orderItems.orderId, id));
+  await db.delete(orders).where(eq(orders.id, id));
+}
+
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
@@ -338,6 +345,12 @@ export async function deleteReview(id: number) {
 // ---------------------------------------------------------------------------
 // Chat
 // ---------------------------------------------------------------------------
+
+export async function deleteChatConversation(conversationId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(chatMessages).where(eq(chatMessages.conversationId, conversationId));
+}
 
 export async function sendChatMessage(data: InsertChatMessage) {
   const db = await getDb();

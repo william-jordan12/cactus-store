@@ -87,4 +87,12 @@ export const chatRouter = router({
       });
       return { success: true };
     }),
+
+  // Admin: delete an entire conversation
+  deleteConversation: adminProcedure
+    .input(z.object({ conversationId: z.string().min(1).max(64) }))
+    .mutation(async ({ input }) => {
+      await db.deleteChatConversation(input.conversationId);
+      return { success: true };
+    }),
 });

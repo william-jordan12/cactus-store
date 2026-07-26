@@ -1,12 +1,14 @@
 import AdminLayout from "@/components/AdminLayout";
 import { trpc } from "@/lib/trpc";
-import { Loader2, MessageSquare, Send } from "lucide-react";
+import { Loader2, MessageSquare, Send, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 
 export default function AdminChat() {
   const [selectedConv, setSelectedConv] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const utils = trpc.useUtils();
   const replyMutation = trpc.chat.reply.useMutation();
   const conversationsQuery = trpc.chat.conversations.useQuery(undefined, {
     refetchInterval: 5000,
@@ -15,6 +17,15 @@ export default function AdminChat() {
     { conversationId: selectedConv! },
     { enabled: !!selectedConv, refetchInterval: 5000 }
   );
+
+  const deleteConversation = trpc.chat.deleteConversation.useMutation({
+    onSuccess: () => {
+      toast.success("Conversation deleted");
+      setSelectedConv(null);
+      conversationsQuery.refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,29 +70,45 @@ export default function AdminChat() {
           ) : (
             <div className="divide-y divide-border">
               {conversations.map(conv => (
-                <button
+                <div
                   key={conv.conversationId}
-                  onClick={() => setSelectedConv(conv.conversationId)}
-                  className={`w-full text-left px-3 py-3 hover:bg-muted/50 transition-colors ${
+                  className={`relative group ${
                     selectedConv === conv.conversationId ? "bg-primary/5 border-l-2 border-primary" : ""
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-mono text-muted-foreground">
-                      {conv.conversationId.slice(0, 8)}...
-                    </span>
-                    {conv.unread > 0 && (
-                      <span className="h-5 w-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
-                        {conv.unread}
+                  <button
+                    onClick={() => setSelectedConv(conv.conversationId)}
+                    className="w-full text-left px-3 py-3 hover:bg-muted/50 transition-colors pr-9"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {conv.conversationId.slice(0, 8)}...
                       </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-foreground truncate">{conv.lastMessage}</div>
-                  <div className="text-[10px] text-muted-foreground mt-1">
-                    {conv.lastSender === "customer" ? "Customer" : conv.lastSender === "admin" ? "You" : "Bot"} ·{" "}
-                    {new Date(conv.lastAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                  </div>
-                </button>
+                      {conv.unread > 0 && (
+                        <span className="h-5 w-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+                          {conv.unread}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-foreground truncate">{conv.lastMessage}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1">
+                      {conv.lastSender === "customer" ? "Customer" : conv.lastSender === "admin" ? "You" : "Bot"} ·{" "}
+                      {new Date(conv.lastAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm("Delete this conversation?")) {
+                        deleteConversation.mutate({ conversationId: conv.conversationId });
+                      }
+                    }}
+                    className="absolute top-3 right-2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                    aria-label="Delete conversation"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -96,9 +123,27 @@ export default function AdminChat() {
           ) : (
             <>
               {/* Header */}
-              <div className="px-4 py-3 border-b border-border shrink-0">
-                <div className="text-sm font-bold">Conversation {selectedConv.slice(0, 8)}...</div>
-                <div className="text-xs text-muted-foreground">Customer chat session</div>
+              <div className="px-4 py-3 border-b border-border shrink-0 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-bold">Conversation {selectedConv.slice(0, 8)}...</div>
+                  <div className="text-xs text-muted-foreground">Customer chat session</div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (window.confirm("Delete this conversation?")) {
+                      deleteConversation.mutate({ conversationId: selectedConv });
+                    }
+                  }}
+                  disabled={deleteConversation.isPending}
+                  className="p-2 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  aria-label="Delete conversation"
+                >
+                  {deleteConversation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
               </div>
 
               {/* Messages */}
