@@ -1,4 +1,4 @@
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   categories,
@@ -392,7 +392,7 @@ export async function listChatConversations() {
   const latestMessages = await db
     .select()
     .from(chatMessages)
-    .where(and(...convIds.map((id: number) => eq(chatMessages.id, id))));
+    .where(or(...convIds.map((id: number) => eq(chatMessages.id, id))));
 
   // Count unread customer messages per conversation
   const unreadRows = await db.execute(`

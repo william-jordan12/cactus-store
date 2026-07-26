@@ -19,31 +19,6 @@ export const chatRouter = router({
         text: input.text,
       });
 
-      // Check if the bot can handle this — if not, escalate to human
-      const lower = input.text.toLowerCase();
-      const canHandle =
-        lower.includes("order") || lower.includes("track") ||
-        lower.includes("ship") || lower.includes("return") ||
-        lower.includes("refund") || lower.includes("care") ||
-        lower.includes("water") || lower.includes("light") ||
-        lower.includes("seed") || lower.includes("germ") ||
-        lower.includes("hello") || lower.includes("hi") ||
-        lower.includes("hey") || lower.includes("payment") ||
-        lower.includes("pay") || lower.includes("cancel");
-
-      if (!canHandle) {
-        // Notify admin that a customer needs help
-        try {
-          const { notifyOwner } = await import("../_core/notification");
-          await notifyOwner({
-            title: "Live Chat - Customer Needs Help",
-            content: `Customer asked: "${input.text.slice(0, 100)}"`,
-          });
-        } catch {
-          // Notification is best-effort
-        }
-      }
-
       return { success: true, id: msgId } as const;
     }),
 
