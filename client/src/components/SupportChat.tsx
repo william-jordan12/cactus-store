@@ -226,7 +226,8 @@ export default function SupportChat() {
               {QUICK_REPLIES.map(reply => (
                 <button
                   key={reply}
-                  onClick={() => send(reply)}
+                  type="button"
+                  onMouseDown={e => { e.preventDefault(); e.stopPropagation(); send(reply); }}
                   className="text-xs px-3 py-1.5 rounded-full border border-[oklch(0.47_0.11_155)]/30 text-[oklch(0.47_0.11_155)] hover:bg-[oklch(0.47_0.11_155)]/5 transition-colors font-medium"
                 >
                   {reply}
@@ -239,7 +240,7 @@ export default function SupportChat() {
             <form
               onSubmit={e => {
                 e.preventDefault();
-                send(input);
+                if (input.trim()) send(input);
               }}
               className="flex items-center gap-2"
             >
