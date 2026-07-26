@@ -1,5 +1,5 @@
 import { MessageCircle, X, Send, Headphones } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 
 type UiMessage = {
@@ -64,6 +64,21 @@ const QUICK_REPLIES = [
   "Return policy",
 ];
 
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div className="bg-white border border-border shadow-sm rounded-2xl rounded-bl-md px-4 py-3 max-w-[60%]">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground mr-1">Bot</span>
+          <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
+          <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
+          <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:300ms]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SupportChat() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<UiMessage[]>(WELCOME_MESSAGES);
@@ -71,6 +86,7 @@ export default function SupportChat() {
   const [visitorId] = useState(() => getVisitorId());
   const [lastPolledId, setLastPolledId] = useState(0);
   const [hasUnread, setHasUnread] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const sendMutation = trpc.chat.send.useMutation();
@@ -91,9 +107,9 @@ export default function SupportChat() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  // Integrate polled messages into the UI
+  // Integrate polled messages into the UI (skip messages we already added locally)
   useEffect(() => {
     const data = pollQuery.data;
     if (!data || data.length === 0) return;
@@ -135,25 +151,35 @@ export default function SupportChat() {
     setMessages(prev => [...prev, userMsg]);
     setInput("");
 
-    // Show bot reply instantly if the bot can handle it
+    // Check if the client-side bot can handle this
     const botReply = getBotReply(text.trim());
-    if (botReply) {
-      const botMsg: UiMessage = {
-        id: nextNegId--,
-        sender: "bot",
-        text: botReply,
-        time: formatTime(),
-      };
-      setMessages(prev => [...prev, botMsg]);
-    }
 
     try {
-      await sendMutation.mutateAsync({
+      const result = await sendMutation.mutateAsync({
         conversationId: visitorId,
         text: text.trim(),
       });
+      // Skip the server-saved version of our own message in future polls
+      if (result.id) {
+        setLastPolledId(prev => Math.max(prev, result.id));
+      }
     } catch (err) {
       console.error("Chat send failed:", err);
+    }
+
+    // Show bot reply with typing delay
+    if (botReply) {
+      setIsTyping(true);
+      setTimeout(() => {
+        setIsTyping(false);
+        const botMsg: UiMessage = {
+          id: nextNegId--,
+          sender: "bot",
+          text: botReply,
+          time: formatTime(),
+        };
+        setMessages(prev => [...prev, botMsg]);
+      }, 1200 + Math.random() * 800); // 1.2–2s delay
     }
   };
 
@@ -218,6 +244,7 @@ export default function SupportChat() {
                 </div>
               </div>
             ))}
+            {isTyping && <TypingIndicator />}
             <div ref={messagesEndRef} />
           </div>
 

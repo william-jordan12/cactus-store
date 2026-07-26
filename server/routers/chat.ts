@@ -13,7 +13,7 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      await db.sendChatMessage({
+      const msgId = await db.sendChatMessage({
         conversationId: input.conversationId,
         sender: "customer",
         text: input.text,
@@ -44,7 +44,7 @@ export const chatRouter = router({
         }
       }
 
-      return { success: true } as const;
+      return { success: true, id: msgId } as const;
     }),
 
   // Customer polls for new messages (admin replies)
