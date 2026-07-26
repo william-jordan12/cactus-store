@@ -336,173 +336,175 @@ export default function AdminProducts() {
 
       {/* Create / edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl mx-4 md:mx-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit Product" : "Add Product"}</DialogTitle>
-            <DialogDescription>
-              {editing ? "Update the product details below." : "Fill in the details for the new product."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="p-title">Title *</Label>
-              <Input
-                id="p-title"
-                value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                placeholder="e.g. Lophophora Williamsii 4cm"
-              />
-            </div>
-
-            {/* Image Upload Zone */}
-            <div className="space-y-1.5">
-              <Label>Product Images</Label>
-              <div
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                  dragOver
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50 hover:bg-muted/50"
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={e => {
-                    if (e.target.files) handleFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  {uploading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
-                    </span>
-                  ) : (
-                    <>
-                      Drag & drop images here, or <span className="text-primary font-medium">browse</span>
-                    </>
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground/60 mt-1">
-                  PNG, JPG, WebP up to 10MB each. First image is the main product image.
-                </p>
-              </div>
-            </div>
-
-            {/* Image previews */}
-            {allImages.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {allImages.map((url, i) => (
-                  <div key={i} className="relative group">
-                    <img
-                      src={url}
-                      alt={`Image ${i + 1}`}
-                      className="h-20 w-20 rounded border border-border object-cover"
-                    />
-                    {i === 0 && (
-                      <span className="absolute -top-1 -left-1 bg-primary text-white text-[9px] font-bold px-1 rounded">
-                        MAIN
-                      </span>
-                    )}
-                    <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {i > 0 && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
-                          className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
-                        >
-                          {"\u2190"}
-                        </button>
-                      )}
-                      {i < allImages.length - 1 && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
-                          className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
-                        >
-                          {"\u2192"}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                        className="bg-destructive text-white rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-destructive/80"
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Manual URL fallback */}
-            <div className="space-y-1.5">
-              <Label htmlFor="p-image">Or paste Image URL</Label>
-              <Input
-                id="p-image"
-                value={form.imageUrl}
-                onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
-                placeholder="https://example.com/photo.jpg"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+        <DialogContent className="max-h-[90vh] overflow-y-auto w-[calc(100vw-2rem)] max-w-2xl md:mx-auto p-0">
+          <div className="p-4 sm:p-6 space-y-4">
+            <DialogHeader>
+              <DialogTitle>{editing ? "Edit Product" : "Add Product"}</DialogTitle>
+              <DialogDescription>
+                {editing ? "Update the product details below." : "Fill in the details for the new product."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="p-price">Price (USD) *</Label>
+                <Label htmlFor="p-title">Title *</Label>
                 <Input
-                  id="p-price"
-                  value={form.price}
-                  onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                  placeholder="19.99"
-                  inputMode="decimal"
+                  id="p-title"
+                  value={form.title}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="e.g. Lophophora Williamsii 4cm"
                 />
               </div>
+
+              {/* Image Upload Zone */}
               <div className="space-y-1.5">
-                <Label>Category</Label>
-                <Select value={form.categoryId} onValueChange={v => setForm(f => ({ ...f, categoryId: v }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Uncategorized</SelectItem>
-                    {categories?.map(cat => (
-                      <SelectItem key={cat.id} value={String(cat.id)}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Product Images</Label>
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center cursor-pointer transition-colors ${
+                    dragOver
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50 hover:bg-muted/50"
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={e => {
+                      if (e.target.files) handleFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Upload className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1.5 sm:mb-2 text-muted-foreground/50" />
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {uploading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
+                      </span>
+                    ) : (
+                      <>
+                        Drag & drop images here, or <span className="text-primary font-medium">browse</span>
+                      </>
+                    )}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground/60 mt-1">
+                    PNG, JPG, WebP up to 10MB each. First image is the main product image.
+                  </p>
+                </div>
+              </div>
+
+              {/* Image previews */}
+              {allImages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {allImages.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <img
+                        src={url}
+                        alt={`Image ${i + 1}`}
+                        className="h-16 w-16 sm:h-20 sm:w-20 rounded border border-border object-cover"
+                      />
+                      {i === 0 && (
+                        <span className="absolute -top-1 -left-1 bg-primary text-white text-[9px] font-bold px-1 rounded">
+                          MAIN
+                        </span>
+                      )}
+                      <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {i > 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
+                            className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
+                          >
+                            {"\u2190"}
+                          </button>
+                        )}
+                        {i < allImages.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
+                            className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
+                          >
+                            {"\u2192"}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                          className="bg-destructive text-white rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-destructive/80"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Manual URL fallback */}
+              <div className="space-y-1.5">
+                <Label htmlFor="p-image">Or paste Image URL</Label>
+                <Input
+                  id="p-image"
+                  value={form.imageUrl}
+                  onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                  placeholder="https://example.com/photo.jpg"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="p-price">Price (USD) *</Label>
+                  <Input
+                    id="p-price"
+                    value={form.price}
+                    onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+                    placeholder="19.99"
+                    inputMode="decimal"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Category</Label>
+                  <Select value={form.categoryId} onValueChange={v => setForm(f => ({ ...f, categoryId: v }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Uncategorized</SelectItem>
+                      {categories?.map(cat => (
+                        <SelectItem key={cat.id} value={String(cat.id)}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="p-desc">Description</Label>
+                <Textarea
+                  id="p-desc"
+                  rows={4}
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Describe the product…"
+                />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-desc">Description</Label>
-              <Textarea
-                id="p-desc"
-                rows={4}
-                value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Describe the product…"
-              />
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)} className="w-full sm:w-auto">
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={saving} className="w-full sm:w-auto">
+                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {editing ? "Save Changes" : "Create Product"}
+              </Button>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {editing ? "Save Changes" : "Create Product"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
