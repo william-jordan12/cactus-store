@@ -1,5 +1,5 @@
 import { MessageCircle, X, Send, Headphones } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 
 type UiMessage = {
@@ -8,6 +8,8 @@ type UiMessage = {
   text: string;
   time: string;
 };
+
+let nextNegId = -1;
 
 function getVisitorId(): string {
   const key = "store_chat_visitor_id";
@@ -42,13 +44,13 @@ function getBotReply(msg: string): string | null {
 
 const WELCOME_MESSAGES: UiMessage[] = [
   {
-    id: 1,
+    id: nextNegId--,
     sender: "bot",
     text: "Hi there! Welcome to Cactus Store support. How can we help you today?",
     time: "now",
   },
   {
-    id: 2,
+    id: nextNegId--,
     sender: "bot",
     text: "You can ask us about orders, shipping, plant care, or anything else!",
     time: "now",
@@ -75,8 +77,8 @@ export default function SupportChat() {
   const pollQuery = trpc.chat.poll.useQuery(
     { conversationId: visitorId, afterId: lastPolledId || undefined },
     {
-      refetchInterval: 3000,
-      enabled: true,
+      refetchInterval: open ? 3000 : false,
+      enabled: open,
     }
   );
 
@@ -91,31 +93,32 @@ export default function SupportChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Integrate polled messages into the UI
   useEffect(() => {
     const data = pollQuery.data;
     if (!data || data.length === 0) return;
 
-    setMessages(prev => {
-      const existingIds = new Set(prev.map(m => m.id));
-      const newMsgs: UiMessage[] = data
-        .filter((m: any) => !existingIds.has(m.id))
-        .map((m: any) => ({
-          id: m.id,
-          sender: m.sender === "customer" ? "user" : (m.sender as "admin" | "bot"),
-          text: m.text,
-          time: new Date(m.createdAt).toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-          }),
-        }));
-      if (newMsgs.length === 0) return prev;
+    const existingIds = new Set(messages.map(m => m.id));
+    const newMsgs: UiMessage[] = data
+      .filter((m: any) => !existingIds.has(m.id))
+      .map((m: any) => ({
+        id: m.id,
+        sender: m.sender === "customer" ? "user" : (m.sender as "admin" | "bot"),
+        text: m.text,
+        time: new Date(m.createdAt).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+      }));
+
+    if (newMsgs.length > 0) {
+      setMessages(prev => [...prev, ...newMsgs]);
       const maxId = Math.max(...data.map((m: any) => m.id));
       setLastPolledId(maxId);
       if (newMsgs.some(m => m.sender === "admin") && !open) {
         setHasUnread(true);
       }
-      return [...prev, ...newMsgs];
-    });
+    }
   }, [pollQuery.data, open]);
 
   const formatTime = () =>
@@ -124,7 +127,7 @@ export default function SupportChat() {
   const send = async (text: string) => {
     if (!text.trim()) return;
     const userMsg: UiMessage = {
-      id: Date.now(),
+      id: nextNegId--,
       sender: "user",
       text: text.trim(),
       time: formatTime(),
@@ -132,10 +135,11 @@ export default function SupportChat() {
     setMessages(prev => [...prev, userMsg]);
     setInput("");
 
+    // Show bot reply instantly if the bot can handle it
     const botReply = getBotReply(text.trim());
     if (botReply) {
       const botMsg: UiMessage = {
-        id: Date.now() + 1,
+        id: nextNegId--,
         sender: "bot",
         text: botReply,
         time: formatTime(),
@@ -148,7 +152,6 @@ export default function SupportChat() {
         conversationId: visitorId,
         text: text.trim(),
       });
-      setTimeout(() => pollQuery.refetch(), 2000);
     } catch (err) {
       console.error("Chat send failed:", err);
     }

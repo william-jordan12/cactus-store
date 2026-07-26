@@ -29,6 +29,7 @@ export default function AdminChat() {
       });
       setReplyText("");
       messagesQuery.refetch();
+      conversationsQuery.refetch();
     } catch (err) {
       console.error("Reply failed:", err);
     }
@@ -152,7 +153,11 @@ export default function AdminChat() {
                     disabled={!replyText.trim() || replyMutation.isPending}
                     className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <Send className="h-4 w-4" />
+                    {replyMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </button>
                 </form>
               </div>

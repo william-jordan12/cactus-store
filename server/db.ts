@@ -1,4 +1,4 @@
-import { desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   categories,
@@ -349,41 +349,71 @@ export async function sendChatMessage(data: InsertChatMessage) {
 export async function getChatMessages(conversationId: string, afterId?: number) {
   const db = await getDb();
   if (!db) return [];
+  const conditions = [eq(chatMessages.conversationId, conversationId)];
   if (afterId) {
-    return db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.conversationId, conversationId))
-      .where(gt(chatMessages.id, afterId))
-      .orderBy(chatMessages.createdAt);
+    conditions.push(gt(chatMessages.id, afterId));
   }
   return db
     .select()
     .from(chatMessages)
-    .where(eq(chatMessages.conversationId, conversationId))
+    .where(and(...conditions))
     .orderBy(chatMessages.createdAt);
 }
 
 export async function listChatConversations() {
   const db = await getDb();
   if (!db) return [];
-  const all = await db.select().from(chatMessages).orderBy(desc(chatMessages.createdAt));
-  const convMap = new Map<string, { conversationId: string; lastMessage: string; lastSender: string; lastAt: Date; unread: number }>();
-  for (const msg of all) {
-    const existing = convMap.get(msg.conversationId);
-    if (!existing) {
-      convMap.set(msg.conversationId, {
+
+  // Get the most recent message per conversation using a subquery approach
+  const latestPerConv = await db.execute(`
+    SELECT conversationId, MAX(id) as maxId
+    FROM chatMessages
+    GROUP BY conversationId
+    ORDER BY maxId DESC
+    LIMIT 50
+  `);
+
+  const convIds = (latestPerConv as any[]).map((r: any) => r.maxId);
+  if (convIds.length === 0) return [];
+
+  const latestMessages = await db
+    .select()
+    .from(chatMessages)
+    .where(and(...convIds.map((id: number) => eq(chatMessages.id, id))));
+
+  // Count unread customer messages per conversation
+  const unreadRows = await db.execute(`
+    SELECT conversationId, COUNT(*) as cnt
+    FROM chatMessages
+    WHERE sender = 'customer'
+      AND id > (
+        SELECT COALESCE(MAX(id), 0)
+        FROM chatMessages
+        WHERE sender IN ('admin', 'bot')
+          AND conversationId = chatMessages.conversationId
+      )
+    GROUP BY conversationId
+  `);
+
+  const unreadMap = new Map<string, number>();
+  for (const row of unreadRows as any[]) {
+    unreadMap.set(row.conversationId, Number(row.cnt));
+  }
+
+  const msgMap = new Map(latestMessages.map(m => [m.id, m]));
+
+  return (latestPerConv as any[])
+    .map((row: any) => {
+      const msg = msgMap.get(row.maxId);
+      if (!msg) return null;
+      return {
         conversationId: msg.conversationId,
         lastMessage: msg.text,
         lastSender: msg.sender,
         lastAt: msg.createdAt,
-        unread: msg.sender === "customer" ? 1 : 0,
-      });
-    } else if (msg.sender === "customer" && !existing.lastMessage) {
-      existing.unread++;
-    }
-  }
-  return Array.from(convMap.values()).sort(
-    (a, b) => b.lastAt.getTime() - a.lastAt.getTime()
-  );
+        unread: unreadMap.get(msg.conversationId) ?? 0,
+      };
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => b.lastAt.getTime() - a.lastAt.getTime());
 }
