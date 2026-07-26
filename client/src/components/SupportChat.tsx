@@ -21,7 +21,9 @@ function getVisitorId(): string {
   return id;
 }
 
-function getBotReply(msg: string): string | null {
+const ESCALATION_REPLY = "Let me connect you with our team. They'll get back to you shortly!";
+
+function getBotReply(msg: string): string {
   const lower = msg.toLowerCase();
   if (lower.includes("order") || lower.includes("track"))
     return "You can track your order using the tracking link sent to your email. If you can't find it, share your order number and we'll look it up.";
@@ -39,7 +41,8 @@ function getBotReply(msg: string): string | null {
     return "We accept Cash App, PayPal, Venmo, Zelle, Bitcoin, Apple Pay, Chime, bank transfers, and wire transfers. Choose your preferred method at checkout.";
   if (lower.includes("cancel"))
     return "To cancel an order, please contact us as soon as possible. If the order hasn't shipped yet, we can cancel it for you.";
-  return null;
+  // Everything else gets escalated to a human
+  return ESCALATION_REPLY;
 }
 
 const WELCOME_MESSAGES: UiMessage[] = [
@@ -69,7 +72,6 @@ function TypingIndicator() {
     <div className="flex justify-start">
       <div className="bg-white border border-border shadow-sm rounded-2xl rounded-bl-md px-4 py-3">
         <div className="flex items-center gap-1">
-          <span className="text-[10px] font-bold text-muted-foreground mr-1.5">Bot</span>
           <span className="h-[6px] w-[6px] rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms] [animation-duration:1.4s]" />
           <span className="h-[6px] w-[6px] rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:200ms] [animation-duration:1.4s]" />
           <span className="h-[6px] w-[6px] rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:400ms] [animation-duration:1.4s]" />
@@ -109,7 +111,7 @@ export default function SupportChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  // Integrate polled messages into the UI (skip messages we already added locally)
+  // Integrate polled messages into the UI
   useEffect(() => {
     const data = pollQuery.data;
     if (!data || data.length === 0) return;
@@ -151,9 +153,7 @@ export default function SupportChat() {
     setMessages(prev => [...prev, userMsg]);
     setInput("");
 
-    const botReply = getBotReply(text.trim());
-
-    // Fire server call in background — don't block UI
+    // Fire server call in background (saves to DB, handles escalation notification)
     sendMutation.mutateAsync({
       conversationId: visitorId,
       text: text.trim(),
@@ -165,20 +165,19 @@ export default function SupportChat() {
       console.error("Chat send failed:", err);
     });
 
-    // Show typing indicator immediately, then bot reply after delay
-    if (botReply) {
-      setIsTyping(true);
-      setTimeout(() => {
-        setIsTyping(false);
-        const botMsg: UiMessage = {
-          id: nextNegId--,
-          sender: "bot",
-          text: botReply,
-          time: formatTime(),
-        };
-        setMessages(prev => [...prev, botMsg]);
-      }, 1500 + Math.random() * 1000); // 1.5–2.5s realistic typing delay
-    }
+    // Always show typing indicator, then reply (bot answer or escalation)
+    const reply = getBotReply(text.trim());
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      const botMsg: UiMessage = {
+        id: nextNegId--,
+        sender: "bot",
+        text: reply,
+        time: formatTime(),
+      };
+      setMessages(prev => [...prev, botMsg]);
+    }, 1500 + Math.random() * 1000);
   };
 
   return (
