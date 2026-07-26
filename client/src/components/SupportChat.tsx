@@ -67,12 +67,12 @@ const QUICK_REPLIES = [
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
-      <div className="bg-white border border-border shadow-sm rounded-2xl rounded-bl-md px-4 py-3 max-w-[60%]">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground mr-1">Bot</span>
-          <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
-          <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
-          <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:300ms]" />
+      <div className="bg-white border border-border shadow-sm rounded-2xl rounded-bl-md px-4 py-3">
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-bold text-muted-foreground mr-1.5">Bot</span>
+          <span className="h-[6px] w-[6px] rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms] [animation-duration:1.4s]" />
+          <span className="h-[6px] w-[6px] rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:200ms] [animation-duration:1.4s]" />
+          <span className="h-[6px] w-[6px] rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:400ms] [animation-duration:1.4s]" />
         </div>
       </div>
     </div>
@@ -140,7 +140,7 @@ export default function SupportChat() {
   const formatTime = () =>
     new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-  const send = async (text: string) => {
+  const send = (text: string) => {
     if (!text.trim()) return;
     const userMsg: UiMessage = {
       id: nextNegId--,
@@ -151,23 +151,21 @@ export default function SupportChat() {
     setMessages(prev => [...prev, userMsg]);
     setInput("");
 
-    // Check if the client-side bot can handle this
     const botReply = getBotReply(text.trim());
 
-    try {
-      const result = await sendMutation.mutateAsync({
-        conversationId: visitorId,
-        text: text.trim(),
-      });
-      // Skip the server-saved version of our own message in future polls
+    // Fire server call in background — don't block UI
+    sendMutation.mutateAsync({
+      conversationId: visitorId,
+      text: text.trim(),
+    }).then(result => {
       if (result.id) {
         setLastPolledId(prev => Math.max(prev, result.id));
       }
-    } catch (err) {
+    }).catch(err => {
       console.error("Chat send failed:", err);
-    }
+    });
 
-    // Show bot reply with typing delay
+    // Show typing indicator immediately, then bot reply after delay
     if (botReply) {
       setIsTyping(true);
       setTimeout(() => {
@@ -179,7 +177,7 @@ export default function SupportChat() {
           time: formatTime(),
         };
         setMessages(prev => [...prev, botMsg]);
-      }, 1200 + Math.random() * 800); // 1.2–2s delay
+      }, 1500 + Math.random() * 1000); // 1.5–2.5s realistic typing delay
     }
   };
 
