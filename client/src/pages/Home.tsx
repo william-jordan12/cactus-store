@@ -4,7 +4,7 @@ import StoreLayout from "@/components/StoreLayout";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice } from "@/lib/money";
+import { formatPrice, formatPriceRange } from "@/lib/money";
 import { trpc } from "@/lib/trpc";
 import { ImageOff, PackageOpen, ShoppingCart } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -42,7 +42,10 @@ export default function Home() {
     search: search || undefined,
   });
 
-  const handleAdd = (product: NonNullable<typeof products>[number]) => {
+  const handleAdd = (e: React.MouseEvent, product: NonNullable<typeof products>[number]) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (product.inStock === false) return;
     addItem({
       productId: product.id,
       title: product.title,
@@ -139,11 +142,14 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6">
             {products.map(product => (
               <Link key={product.id} href={`/product/${product.id}`} className="group flex flex-col" onMouseEnter={() => prefetchProduct(product.id)}>
-                <div className="aspect-[4/5] bg-muted/40 rounded-lg overflow-hidden mb-3 flex items-center justify-center">
+                <div className="aspect-[4/5] bg-muted/40 rounded-lg overflow-hidden mb-3 flex items-center justify-center relative">
                   {product.imageUrl ? (
                     <img src={product.imageUrl} alt={product.title} loading="lazy" className="h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out" />
                   ) : (
                     <ImageOff className="h-8 w-8 text-muted-foreground/20" strokeWidth={1.5} />
+                  )}
+                  {product.inStock === false && (
+                    <span className="absolute top-2 left-2 px-2 py-0.5 bg-red-600 text-white text-[10px] font-bold uppercase rounded tracking-wide">Out of Stock</span>
                   )}
                 </div>
                 <div className="flex-1 flex flex-col">
@@ -154,11 +160,18 @@ export default function Home() {
                     {product.title}
                   </h3>
                   <div className="flex items-center justify-between mt-auto">
-                    <span className="font-semibold text-sm">{formatPrice(product.priceCents)}</span>
+                    <span className="font-semibold text-sm">
+                      {product.priceEndCents ? formatPriceRange(product.priceCents, product.priceEndCents) : formatPrice(product.priceCents)}
+                    </span>
                     <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAdd(product); }}
-                      className="h-8 w-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-foreground hover:text-background hover:border-foreground transition-all"
-                      aria-label={`Add ${product.title} to cart`}
+                      onClick={(e) => handleAdd(e, product)}
+                      disabled={product.inStock === false}
+                      className={`h-8 w-8 rounded-full border flex items-center justify-center transition-all ${
+                        product.inStock === false
+                          ? "border-border/50 text-muted-foreground/30 cursor-not-allowed"
+                          : "border-border text-muted-foreground hover:bg-foreground hover:text-background hover:border-foreground"
+                      }`}
+                      aria-label={product.inStock === false ? "Out of stock" : `Add ${product.title} to cart`}
                     >
                       <ShoppingCart className="h-3.5 w-3.5" />
                     </button>

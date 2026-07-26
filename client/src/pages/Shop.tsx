@@ -1,6 +1,6 @@
 import StoreLayout from "@/components/StoreLayout";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice } from "@/lib/money";
+import { formatPrice, formatPriceRange } from "@/lib/money";
 import { trpc } from "@/lib/trpc";
 import { ImageOff, PackageOpen, ShoppingCart } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -30,7 +30,10 @@ export default function Shop() {
     search: urlSearch || undefined,
   });
 
-  const handleAdd = (product: NonNullable<typeof products>[number]) => {
+  const handleAdd = (e: React.MouseEvent, product: NonNullable<typeof products>[number]) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (product.inStock === false) return;
     addItem({
       productId: product.id,
       title: product.title,
@@ -114,7 +117,7 @@ export default function Shop() {
                 className="group flex flex-col"
                 onMouseEnter={() => prefetchProduct(product.id)}
               >
-                <div className="aspect-[4/5] bg-muted/40 rounded-lg overflow-hidden mb-3 flex items-center justify-center">
+                <div className="aspect-[4/5] bg-muted/40 rounded-lg overflow-hidden mb-3 flex items-center justify-center relative">
                   {product.imageUrl ? (
                     <img
                       src={product.imageUrl}
@@ -125,6 +128,9 @@ export default function Shop() {
                   ) : (
                     <ImageOff className="h-8 w-8 text-muted-foreground/20" strokeWidth={1.5} />
                   )}
+                  {product.inStock === false && (
+                    <span className="absolute top-2 left-2 px-2 py-0.5 bg-red-600 text-white text-[10px] font-bold uppercase rounded tracking-wide">Out of Stock</span>
+                  )}
                 </div>
                 <div className="flex-1 flex flex-col">
                   <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-0.5">
@@ -134,11 +140,20 @@ export default function Shop() {
                     {product.title}
                   </h3>
                   <div className="flex items-center justify-between mt-auto">
-                    <span className="font-semibold text-sm">{formatPrice(product.priceCents)}</span>
+                    <span className="font-semibold text-sm">
+                      {product.priceEndCents
+                        ? formatPriceRange(product.priceCents, product.priceEndCents)
+                        : formatPrice(product.priceCents)}
+                    </span>
                     <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAdd(product); }}
-                      className="h-8 w-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-foreground hover:text-background hover:border-foreground transition-all"
-                      aria-label={`Add ${product.title} to cart`}
+                      onClick={(e) => handleAdd(e, product)}
+                      disabled={product.inStock === false}
+                      className={`h-8 w-8 rounded-full border flex items-center justify-center transition-all ${
+                        product.inStock === false
+                          ? "border-border/50 text-muted-foreground/30 cursor-not-allowed"
+                          : "border-border text-muted-foreground hover:bg-foreground hover:text-background hover:border-foreground"
+                      }`}
+                      aria-label={product.inStock === false ? "Out of stock" : `Add ${product.title} to cart`}
                     >
                       <ShoppingCart className="h-3.5 w-3.5" />
                     </button>

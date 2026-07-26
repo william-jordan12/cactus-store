@@ -70,6 +70,25 @@ export async function getDb() {
       } catch (e: any) {
         console.warn("[Database] chatMessages migration:", e?.message);
       }
+      // Auto-migrate: add priceEndCents and inStock columns if missing
+      try {
+        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'priceEndCents'");
+        if ((cols as any[]).length === 0) {
+          await conn.execute("ALTER TABLE products ADD COLUMN `priceEndCents` INT NULL AFTER `priceCents`");
+          console.log("[Database] Added 'priceEndCents' column to products table");
+        }
+      } catch (e: any) {
+        console.warn("[Database] priceEndCents migration:", e?.message);
+      }
+      try {
+        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'inStock'");
+        if ((cols as any[]).length === 0) {
+          await conn.execute("ALTER TABLE products ADD COLUMN `inStock` BOOLEAN NOT NULL DEFAULT TRUE AFTER `priceEndCents`");
+          console.log("[Database] Added 'inStock' column to products table");
+        }
+      } catch (e: any) {
+        console.warn("[Database] inStock migration:", e?.message);
+      }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

@@ -18,6 +18,8 @@ const productInput = z.object({
   imageUrl: z.string().trim().max(10_000_000).nullish(),
   images: z.array(z.string().trim().max(10_000_000)).nullish(),
   priceCents: z.number().int().min(0),
+  priceEndCents: z.number().int().min(0).nullish(),
+  inStock: z.boolean().optional().default(true),
   categoryId: z.number().int().positive().nullish(),
   description: z.string().trim().max(10000).nullish(),
 });
@@ -55,6 +57,8 @@ export const adminRouter = router({
         imageUrl,
         images: JSON.stringify(images),
         priceCents: input.priceCents,
+        priceEndCents: input.priceEndCents ?? null,
+        inStock: input.inStock ?? true,
         categoryId: input.categoryId ?? null,
         description: input.description ?? null,
       });
@@ -71,6 +75,8 @@ export const adminRouter = router({
           imageUrl,
           images: JSON.stringify(images),
           priceCents: data.priceCents,
+          priceEndCents: data.priceEndCents ?? null,
+          inStock: data.inStock ?? true,
           categoryId: data.categoryId ?? null,
           description: data.description ?? null,
         });

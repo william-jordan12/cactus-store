@@ -1,7 +1,7 @@
 import StoreLayout from "@/components/StoreLayout";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice } from "@/lib/money";
+import { formatPrice, formatPriceRange } from "@/lib/money";
 import { trpc } from "@/lib/trpc";
 import { ImageOff, Minus, Plus, ChevronRight, Truck, ShieldCheck, Leaf } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -53,7 +53,7 @@ export default function ProductDetail() {
   }, [allProducts, product]);
 
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product || product.inStock === false) return;
     addItem({
       productId: product.id,
       title: product.title,
@@ -176,8 +176,17 @@ export default function ProductDetail() {
             </h1>
 
             <div className="text-3xl font-bold text-foreground mb-6">
-              {formatPrice(product.priceCents)}
+              {product.priceEndCents
+                ? formatPriceRange(product.priceCents, product.priceEndCents)
+                : formatPrice(product.priceCents)}
             </div>
+
+            {product.inStock === false && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm font-medium mb-4 w-fit">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                Out of Stock
+              </div>
+            )}
 
             {product.description && (
               <p className="text-muted-foreground leading-relaxed mb-6 whitespace-pre-line">
@@ -187,31 +196,36 @@ export default function ProductDetail() {
 
             {/* Quantity + Add to Cart */}
             <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center border border-border rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  className="h-11 w-11 flex items-center justify-center text-foreground/70 hover:bg-muted transition-colors"
-                  aria-label="Decrease quantity"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="h-11 w-12 flex items-center justify-center font-semibold text-sm border-x border-border">
-                  {quantity}
-                </span>
-                <button
-                  onClick={() => setQuantity(q => Math.min(99, q + 1))}
-                  className="h-11 w-11 flex items-center justify-center text-foreground/70 hover:bg-muted transition-colors"
-                  aria-label="Increase quantity"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
+              {product.inStock !== false && (
+                <div className="flex items-center border border-border rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    className="h-11 w-11 flex items-center justify-center text-foreground/70 hover:bg-muted transition-colors"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="h-11 w-12 flex items-center justify-center font-semibold text-sm border-x border-border">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity(q => Math.min(99, q + 1))}
+                    className="h-11 w-11 flex items-center justify-center text-foreground/70 hover:bg-muted transition-colors"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
               <Button
                 size="lg"
-                className="flex-1 uppercase font-bold tracking-wide text-sm h-11"
+                className={`flex-1 uppercase font-bold tracking-wide text-sm h-11 ${
+                  product.inStock === false ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted" : ""
+                }`}
                 onClick={handleAddToCart}
+                disabled={product.inStock === false}
               >
-                Add to Cart
+                {product.inStock === false ? "Out of Stock" : "Add to Cart"}
               </Button>
             </div>
 
@@ -263,7 +277,9 @@ export default function ProductDetail() {
                 </div>
                 <div className="p-3 text-center">
                   <h3 className="font-semibold text-xs leading-snug mb-1 line-clamp-2">{p.title}</h3>
-                  <div className="font-bold text-sm">{formatPrice(p.priceCents)}</div>
+                  <div className="font-bold text-sm">
+                    {p.priceEndCents ? formatPriceRange(p.priceCents, p.priceEndCents) : formatPrice(p.priceCents)}
+                  </div>
                 </div>
               </Link>
             ))}

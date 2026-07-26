@@ -3,6 +3,11 @@ export function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+/** Format a price range, e.g. (1250, 2500) -> "$12.50 – $25.00". */
+export function formatPriceRange(startCents: number, endCents: number): string {
+  return `${formatPrice(startCents)} – ${formatPrice(endCents)}`;
+}
+
 /** Parse a user-entered dollar amount (e.g. "12.50") into integer cents. */
 export function parsePriceToCents(value: string): number | null {
   const cleaned = value.replace(/[^0-9.]/g, "");

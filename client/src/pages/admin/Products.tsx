@@ -42,11 +42,13 @@ interface FormState {
   imageUrl: string;
   images: string[];
   price: string;
+  priceEnd: string;
   categoryId: string;
   description: string;
+  inStock: boolean;
 }
 
-const EMPTY_FORM: FormState = { title: "", imageUrl: "", images: [], price: "", categoryId: "none", description: "" };
+const EMPTY_FORM: FormState = { title: "", imageUrl: "", images: [], price: "", priceEnd: "", categoryId: "none", description: "", inStock: true };
 
 function parseProductImages(product: Product): string[] {
   if (product.images) {
@@ -124,8 +126,10 @@ export default function AdminProducts() {
       imageUrl: product.imageUrl ?? "",
       images,
       price: (product.priceCents / 100).toFixed(2),
+      priceEnd: product.priceEndCents ? (product.priceEndCents / 100).toFixed(2) : "",
       categoryId: product.categoryId ? String(product.categoryId) : "none",
       description: product.description ?? "",
+      inStock: product.inStock ?? true,
     });
     setDialogOpen(true);
   };
@@ -218,11 +222,22 @@ export default function AdminProducts() {
       toast.error("Enter a valid price, e.g. 19.99");
       return;
     }
+    const priceEndCents = form.priceEnd ? parsePriceToCents(form.priceEnd) : null;
+    if (form.priceEnd && priceEndCents === null) {
+      toast.error("Enter a valid ending price, e.g. 29.99");
+      return;
+    }
+    if (priceEndCents !== null && priceEndCents < priceCents) {
+      toast.error("Ending price must be greater than or equal to starting price");
+      return;
+    }
     const payload = {
       title: form.title.trim(),
       imageUrl: form.images.length > 0 ? null : (form.imageUrl.trim() || null),
       images: form.images.length > 0 ? form.images : null,
       priceCents,
+      priceEndCents: priceEndCents || null,
+      inStock: form.inStock,
       categoryId: form.categoryId !== "none" ? Number(form.categoryId) : null,
       description: form.description.trim() || null,
     };
@@ -282,7 +297,16 @@ export default function AdminProducts() {
                       </TableCell>
                       <TableCell className="font-medium max-w-[280px] truncate">{product.title}</TableCell>
                       <TableCell className="text-muted-foreground">{categoryName(product.categoryId)}</TableCell>
-                      <TableCell className="font-semibold">{formatPrice(product.priceCents)}</TableCell>
+                      <TableCell className="font-semibold">
+                        {product.priceEndCents ? (
+                          <span>{formatPrice(product.priceCents)} – {formatPrice(product.priceEndCents)}</span>
+                        ) : (
+                          formatPrice(product.priceCents)
+                        )}
+                        {!product.inStock && (
+                          <span className="ml-2 inline-block px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-600 rounded">Out of Stock</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => openEdit(product)} aria-label="Edit">
@@ -317,7 +341,10 @@ export default function AdminProducts() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm truncate">{product.title}</div>
-                    <div className="text-xs text-muted-foreground">{categoryName(product.categoryId)} · {formatPrice(product.priceCents)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {categoryName(product.categoryId)} · {product.priceEndCents ? `${formatPrice(product.priceCents)} – ${formatPrice(product.priceEndCents)}` : formatPrice(product.priceCents)}
+                      {!product.inStock && <span className="ml-1 inline-block px-1 py-0.5 text-[10px] font-medium bg-red-100 text-red-600 rounded">Out of Stock</span>}
+                    </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)} aria-label="Edit">
@@ -468,6 +495,19 @@ export default function AdminProducts() {
                   />
                 </div>
                 <div className="space-y-1.5">
+                  <Label htmlFor="p-price-end">Ending Price (optional)</Label>
+                  <Input
+                    id="p-price-end"
+                    value={form.priceEnd}
+                    onChange={e => setForm(f => ({ ...f, priceEnd: e.target.value }))}
+                    placeholder="29.99"
+                    inputMode="decimal"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Set a range for variable products (e.g. $19.99 – $29.99)</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
                   <Label>Category</Label>
                   <Select value={form.categoryId} onValueChange={v => setForm(f => ({ ...f, categoryId: v }))}>
                     <SelectTrigger>
@@ -482,6 +522,31 @@ export default function AdminProducts() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Stock Status</Label>
+                  <div className="flex items-center gap-3 h-9">
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, inStock: !f.inStock }))}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                        form.inStock ? "bg-green-500" : "bg-muted-foreground/30"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                          form.inStock ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm font-medium">
+                      {form.inStock ? (
+                        <span className="text-green-600">In Stock</span>
+                      ) : (
+                        <span className="text-red-500">Out of Stock</span>
+                      )}
+                    </span>
+                  </div>
                 </div>
               </div>
               <div className="space-y-1.5">
