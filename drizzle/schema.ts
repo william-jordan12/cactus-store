@@ -54,6 +54,8 @@ export const products = mysqlTable("products", {
   priceCents: int("priceCents").notNull(),
   priceEndCents: int("priceEndCents"),
   inStock: boolean("inStock").default(true).notNull(),
+  isVariable: boolean("isVariable").default(false).notNull(),
+  variants: mediumtext("variants"),
   categoryId: int("categoryId"),
   description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

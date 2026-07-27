@@ -4,7 +4,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -29,26 +28,45 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatPrice, parsePriceToCents } from "@/lib/money";
+import { formatPrice, parsePriceToCents, parseVariants, variantPriceRange } from "@/lib/money";
 import { trpc } from "@/lib/trpc";
 import type { Product } from "../../../../drizzle/schema";
-import { ImageOff, Loader2, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+import type { ProductVariant } from "../../../../shared/types";
+import { GripVertical, ImageOff, Loader2, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
+
+interface VariantDraft {
+  id: string;
+  name: string;
+  imageUrl: string;
+  price: string;
+}
 
 interface FormState {
   title: string;
   imageUrl: string;
   images: string[];
   price: string;
-  priceEnd: string;
   categoryId: string;
   description: string;
   inStock: boolean;
+  isVariable: boolean;
+  variants: VariantDraft[];
 }
 
-const EMPTY_FORM: FormState = { title: "", imageUrl: "", images: [], price: "", priceEnd: "", categoryId: "none", description: "", inStock: true };
+const EMPTY_FORM: FormState = {
+  title: "",
+  imageUrl: "",
+  images: [],
+  price: "",
+  categoryId: "none",
+  description: "",
+  inStock: true,
+  isVariable: false,
+  variants: [],
+};
 
 function parseProductImages(product: Product): string[] {
   if (product.images) {
@@ -60,11 +78,16 @@ function parseProductImages(product: Product): string[] {
   return product.imageUrl ? [product.imageUrl] : [];
 }
 
+let variantIdCounter = 0;
+function newVariantId(): string {
+  return `v_${Date.now()}_${++variantIdCounter}`;
+}
+
 export default function AdminProducts() {
   const utils = trpc.useUtils();
   const searchString = useSearch();
   const { data: products, isLoading } = trpc.admin.products.list.useQuery();
-  const { data: categories } = trpc.admin.categories.list.useQuery();
+  const { data: categories } = trpc.admin.categories.useQuery();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -72,6 +95,7 @@ export default function AdminProducts() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [variantUploading, setVariantUploading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -121,15 +145,22 @@ export default function AdminProducts() {
   const openEdit = (product: Product) => {
     setEditing(product);
     const images = parseProductImages(product);
+    const existingVariants = parseVariants((product as any).variants);
     setForm({
       title: product.title,
       imageUrl: product.imageUrl ?? "",
       images,
       price: (product.priceCents / 100).toFixed(2),
-      priceEnd: product.priceEndCents ? (product.priceEndCents / 100).toFixed(2) : "",
       categoryId: product.categoryId ? String(product.categoryId) : "none",
       description: product.description ?? "",
       inStock: product.inStock ?? true,
+      isVariable: (product as any).isVariable ?? false,
+      variants: existingVariants.map(v => ({
+        id: v.id || newVariantId(),
+        name: v.name,
+        imageUrl: v.imageUrl,
+        price: (v.priceCents / 100).toFixed(2),
+      })),
     });
     setDialogOpen(true);
   };
@@ -212,32 +243,113 @@ export default function AdminProducts() {
     });
   };
 
+  // Variant management
+  const addVariant = () => {
+    setForm(f => ({
+      ...f,
+      variants: [...f.variants, { id: newVariantId(), name: "", imageUrl: "", price: "" }],
+    }));
+  };
+
+  const removeVariant = (id: string) => {
+    setForm(f => ({
+      ...f,
+      variants: f.variants.filter(v => v.id !== id),
+    }));
+  };
+
+  const updateVariant = (id: string, field: keyof VariantDraft, value: string) => {
+    setForm(f => ({
+      ...f,
+      variants: f.variants.map(v => v.id === id ? { ...v, [field]: value } : v),
+    }));
+  };
+
+  const handleVariantFile = useCallback(async (variantId: string, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error(`${file.name} is not an image`);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(`${file.name} exceeds 10MB limit`);
+      return;
+    }
+    setVariantUploading(variantId);
+    try {
+      const compressed = await compressImage(file, 600, 0.65);
+      updateVariant(variantId, "imageUrl", compressed);
+    } catch (e: any) {
+      toast.error(`Failed to process ${file.name}: ${e.message}`);
+    }
+    setVariantUploading(null);
+  }, []);
+
+  const moveVariant = (from: number, to: number) => {
+    setForm(f => {
+      const newVariants = [...f.variants];
+      const [moved] = newVariants.splice(from, 1);
+      newVariants.splice(to, 0, moved);
+      return { ...f, variants: newVariants };
+    });
+  };
+
   const handleSubmit = async () => {
-    const priceCents = parsePriceToCents(form.price);
     if (!form.title.trim()) {
       toast.error("Title is required");
       return;
     }
-    if (priceCents === null) {
-      toast.error("Enter a valid price, e.g. 19.99");
-      return;
+
+    let priceCents = 0;
+    let priceEndCents: number | null = null;
+    let variantsJson: string | null = null;
+
+    if (form.isVariable) {
+      // Validate variants
+      if (form.variants.length === 0) {
+        toast.error("Add at least one variant/sub-product");
+        return;
+      }
+      for (let i = 0; i < form.variants.length; i++) {
+        const v = form.variants[i];
+        if (!v.name.trim()) {
+          toast.error(`Variant ${i + 1} needs a name`);
+          return;
+        }
+        const pc = parsePriceToCents(v.price);
+        if (pc === null || pc <= 0) {
+          toast.error(`Variant "${v.name || i + 1}" needs a valid price`);
+          return;
+        }
+      }
+      // Build variant objects and compute price range
+      const builtVariants: ProductVariant[] = form.variants.map(v => ({
+        id: v.id,
+        name: v.name.trim(),
+        imageUrl: v.imageUrl,
+        priceCents: parsePriceToCents(v.price)!,
+      }));
+      variantsJson = JSON.stringify(builtVariants);
+      const prices = builtVariants.map(v => v.priceCents);
+      priceCents = Math.min(...prices);
+      priceEndCents = Math.max(...prices);
+      if (priceCents === priceEndCents) priceEndCents = null;
+    } else {
+      priceCents = parsePriceToCents(form.price) ?? 0;
+      if (priceCents <= 0) {
+        toast.error("Enter a valid price, e.g. 19.99");
+        return;
+      }
     }
-    const priceEndCents = form.priceEnd ? parsePriceToCents(form.priceEnd) : null;
-    if (form.priceEnd && priceEndCents === null) {
-      toast.error("Enter a valid ending price, e.g. 29.99");
-      return;
-    }
-    if (priceEndCents !== null && priceEndCents < priceCents) {
-      toast.error("Ending price must be greater than or equal to starting price");
-      return;
-    }
+
     const payload = {
       title: form.title.trim(),
       imageUrl: form.images.length > 0 ? null : (form.imageUrl.trim() || null),
       images: form.images.length > 0 ? form.images : null,
       priceCents,
-      priceEndCents: priceEndCents || null,
+      priceEndCents,
       inStock: form.inStock,
+      isVariable: form.isVariable,
+      variants: variantsJson,
       categoryId: form.categoryId !== "none" ? Number(form.categoryId) : null,
       description: form.description.trim() || null,
     };
@@ -249,8 +361,17 @@ export default function AdminProducts() {
   };
 
   const categoryName = (id: number | null) => categories?.find(c => c.id === id)?.name ?? "—";
-  const saving = createMutation.isPending || updateMutation.isPending || uploading;
+  const saving = createMutation.isPending || updateMutation.isPending || uploading || variantUploading !== null;
   const allImages = form.images.length > 0 ? form.images : (form.imageUrl ? [form.imageUrl] : []);
+
+  const productPriceDisplay = (product: Product) => {
+    const variants = parseVariants((product as any).variants);
+    if ((product as any).isVariable && variants.length > 0) {
+      const range = variantPriceRange(variants);
+      if (range) return range[0] === range[1] ? formatPrice(range[0]) : `${formatPrice(range[0])} – ${formatPrice(range[1])}`;
+    }
+    return formatPrice(product.priceCents);
+  };
 
   return (
     <AdminLayout title="Products">
@@ -295,14 +416,15 @@ export default function AdminProducts() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium max-w-[280px] truncate">{product.title}</TableCell>
+                      <TableCell className="font-medium max-w-[280px] truncate">
+                        {product.title}
+                        {(product as any).isVariable && (
+                          <span className="ml-2 inline-block px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-600 rounded">Variable</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{categoryName(product.categoryId)}</TableCell>
                       <TableCell className="font-semibold">
-                        {product.priceEndCents ? (
-                          <span>{formatPrice(product.priceCents)} – {formatPrice(product.priceEndCents)}</span>
-                        ) : (
-                          formatPrice(product.priceCents)
-                        )}
+                        {productPriceDisplay(product)}
                         {!product.inStock && (
                           <span className="ml-2 inline-block px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-600 rounded">Out of Stock</span>
                         )}
@@ -340,9 +462,14 @@ export default function AdminProducts() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{product.title}</div>
+                    <div className="font-medium text-sm truncate">
+                      {product.title}
+                      {(product as any).isVariable && (
+                        <span className="ml-1 inline-block px-1 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-600 rounded">Variable</span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
-                      {categoryName(product.categoryId)} · {product.priceEndCents ? `${formatPrice(product.priceCents)} – ${formatPrice(product.priceEndCents)}` : formatPrice(product.priceCents)}
+                      {categoryName(product.categoryId)} · {productPriceDisplay(product)}
                       {!product.inStock && <span className="ml-1 inline-block px-1 py-0.5 text-[10px] font-medium bg-red-100 text-red-600 rounded">Out of Stock</span>}
                     </div>
                   </div>
@@ -382,130 +509,282 @@ export default function AdminProducts() {
                 />
               </div>
 
-              {/* Image Upload Zone */}
-              <div className="space-y-1.5">
-                <Label>Product Images</Label>
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center cursor-pointer transition-colors ${
-                    dragOver
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50 hover:bg-muted/50"
-                  }`}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={e => {
-                      if (e.target.files) handleFiles(e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-                  <Upload className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1.5 sm:mb-2 text-muted-foreground/50" />
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {uploading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
-                      </span>
-                    ) : (
-                      <>
-                        Drag & drop images here, or <span className="text-primary font-medium">browse</span>
-                      </>
-                    )}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground/60 mt-1">
-                    PNG, JPG, WebP up to 10MB each. First image is the main product image.
-                  </p>
-                </div>
-              </div>
-
-              {/* Image previews */}
-              {allImages.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {allImages.map((url, i) => (
-                    <div key={i} className="relative group">
-                      <img
-                        src={url}
-                        alt={`Image ${i + 1}`}
-                        className="h-16 w-16 sm:h-20 sm:w-20 rounded border border-border object-cover"
+              {/* Image Upload Zone — only for non-variable products */}
+              {!form.isVariable && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Product Images</Label>
+                    <div
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center cursor-pointer transition-colors ${
+                        dragOver
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      }`}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={e => {
+                          if (e.target.files) handleFiles(e.target.files);
+                          e.target.value = "";
+                        }}
                       />
-                      {i === 0 && (
-                        <span className="absolute -top-1 -left-1 bg-primary text-white text-[9px] font-bold px-1 rounded">
-                          MAIN
-                        </span>
-                      )}
-                      <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {i > 0 && (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
-                            className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
-                          >
-                            {"\u2190"}
-                          </button>
+                      <Upload className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1.5 sm:mb-2 text-muted-foreground/50" />
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        {uploading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
+                          </span>
+                        ) : (
+                          <>
+                            Drag & drop images here, or <span className="text-primary font-medium">browse</span>
+                          </>
                         )}
-                        {i < allImages.length - 1 && (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
-                            className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
-                          >
-                            {"\u2192"}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                          className="bg-destructive text-white rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-destructive/80"
-                        >
-                          <X className="h-2.5 w-2.5" />
-                        </button>
-                      </div>
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground/60 mt-1">
+                        PNG, JPG, WebP up to 10MB each. First image is the main product image.
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+
+                  {/* Image previews */}
+                  {allImages.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {allImages.map((url, i) => (
+                        <div key={i} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Image ${i + 1}`}
+                            className="h-16 w-16 sm:h-20 sm:w-20 rounded border border-border object-cover"
+                          />
+                          {i === 0 && (
+                            <span className="absolute -top-1 -left-1 bg-primary text-white text-[9px] font-bold px-1 rounded">
+                              MAIN
+                            </span>
+                          )}
+                          <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {i > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
+                                className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
+                              >
+                                {"\u2190"}
+                              </button>
+                            )}
+                            {i < allImages.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
+                                className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
+                              >
+                                {"\u2192"}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                              className="bg-destructive text-white rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-destructive/80"
+                            >
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Manual URL fallback */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="p-image">Or paste Image URL</Label>
+                    <Input
+                      id="p-image"
+                      value={form.imageUrl}
+                      onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                      placeholder="https://example.com/photo.jpg"
+                    />
+                  </div>
+
+                  {/* Price for non-variable */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="p-price">Price (USD) *</Label>
+                    <Input
+                      id="p-price"
+                      value={form.price}
+                      onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+                      placeholder="19.99"
+                      inputMode="decimal"
+                    />
+                  </div>
+                </>
               )}
 
-              {/* Manual URL fallback */}
-              <div className="space-y-1.5">
-                <Label htmlFor="p-image">Or paste Image URL</Label>
-                <Input
-                  id="p-image"
-                  value={form.imageUrl}
-                  onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
-                  placeholder="https://example.com/photo.jpg"
-                />
+              {/* Variable Product Toggle */}
+              <div className="border border-border rounded-lg p-3 sm:p-4 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-semibold text-sm">Variable Product</Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Toggle on if this product has variants with different images and prices.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({
+                      ...f,
+                      isVariable: !f.isVariable,
+                      variants: f.isVariable ? [] : f.variants.length > 0 ? f.variants : [{ id: newVariantId(), name: "", imageUrl: "", price: "" }],
+                    }))}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                      form.isVariable ? "bg-purple-500" : "bg-muted-foreground/30"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                        form.isVariable ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Variant sub-products */}
+                {form.isVariable && (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Sub-Products ({form.variants.length})
+                      </Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addVariant} className="h-7 text-xs">
+                        <Plus className="h-3 w-3 mr-1" /> Add Variant
+                      </Button>
+                    </div>
+
+                    {form.variants.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-4 border border-dashed rounded-lg">
+                        No variants yet. Click "Add Variant" to create one.
+                      </p>
+                    )}
+
+                    {form.variants.map((variant, idx) => (
+                      <div key={variant.id} className="border border-border rounded-lg p-3 bg-white space-y-2.5">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide shrink-0">
+                            #{idx + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <Input
+                              value={variant.name}
+                              onChange={e => updateVariant(variant.id, "name", e.target.value)}
+                              placeholder="Variant name (e.g. Small, 4cm)"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="w-28 shrink-0">
+                            <Input
+                              value={variant.price}
+                              onChange={e => updateVariant(variant.id, "price", e.target.value)}
+                              placeholder="Price"
+                              inputMode="decimal"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="flex gap-0.5 shrink-0">
+                            {idx > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => moveVariant(idx, idx - 1)}
+                                className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:bg-muted text-xs"
+                              >
+                                {"\u2191"}
+                              </button>
+                            )}
+                            {idx < form.variants.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={() => moveVariant(idx, idx + 1)}
+                                className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:bg-muted text-xs"
+                              >
+                                {"\u2193"}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeVariant(variant.id)}
+                              className="h-7 w-7 flex items-center justify-center rounded text-destructive hover:bg-destructive/10"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Variant image */}
+                        <div className="flex items-center gap-2 pl-6">
+                          {variant.imageUrl ? (
+                            <div className="relative group">
+                              <img
+                                src={variant.imageUrl}
+                                alt={variant.name || "Variant"}
+                                className="h-14 w-14 rounded border border-border object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => updateVariant(variant.id, "imageUrl", "")}
+                                className="absolute -top-1 -right-1 bg-destructive text-white rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-destructive/80"
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="h-14 w-14 rounded border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors">
+                              {variantUploading === variant.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/50" />
+                              ) : (
+                                <>
+                                  <Upload className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                  <span className="text-[8px] text-muted-foreground/50 mt-0.5">Image</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={e => {
+                                  if (e.target.files?.[0]) handleVariantFile(variant.id, e.target.files[0]);
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                          )}
+                          <div className="text-[10px] text-muted-foreground">
+                            {variant.imageUrl ? "Image set" : "Upload an image for this variant"}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {form.variants.length > 0 && (
+                      <div className="text-[11px] text-muted-foreground bg-muted/50 rounded px-3 py-2">
+                        Price range will be: {(() => {
+                          const prices = form.variants.map(v => parsePriceToCents(v.price)).filter((p): p is number => p !== null && p > 0);
+                          if (prices.length === 0) return "—";
+                          const min = Math.min(...prices);
+                          const max = Math.max(...prices);
+                          return min === max ? formatPrice(min) : `${formatPrice(min)} – ${formatPrice(max)}`;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-price">Price (USD) *</Label>
-                  <Input
-                    id="p-price"
-                    value={form.price}
-                    onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                    placeholder="19.99"
-                    inputMode="decimal"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-price-end">Ending Price (optional)</Label>
-                  <Input
-                    id="p-price-end"
-                    value={form.priceEnd}
-                    onChange={e => setForm(f => ({ ...f, priceEnd: e.target.value }))}
-                    placeholder="29.99"
-                    inputMode="decimal"
-                  />
-                  <p className="text-[10px] text-muted-foreground">Set a range for variable products (e.g. $19.99 – $29.99)</p>
-                </div>
-              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Category</Label>

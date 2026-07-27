@@ -89,6 +89,25 @@ export async function getDb() {
       } catch (e: any) {
         console.warn("[Database] inStock migration:", e?.message);
       }
+      // Auto-migrate: add isVariable and variants columns if missing
+      try {
+        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'isVariable'");
+        if ((cols as any[]).length === 0) {
+          await conn.execute("ALTER TABLE products ADD COLUMN `isVariable` BOOLEAN NOT NULL DEFAULT FALSE AFTER `inStock`");
+          console.log("[Database] Added 'isVariable' column to products table");
+        }
+      } catch (e: any) {
+        console.warn("[Database] isVariable migration:", e?.message);
+      }
+      try {
+        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'variants'");
+        if ((cols as any[]).length === 0) {
+          await conn.execute("ALTER TABLE products ADD COLUMN `variants` MEDIUMTEXT NULL AFTER `isVariable`");
+          console.log("[Database] Added 'variants' column to products table");
+        }
+      } catch (e: any) {
+        console.warn("[Database] variants migration:", e?.message);
+      }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
