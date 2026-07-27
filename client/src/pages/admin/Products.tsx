@@ -511,121 +511,119 @@ export default function AdminProducts() {
                 />
               </div>
 
-              {/* Image Upload Zone — only for non-variable products */}
-              {!form.isVariable && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label>Product Images</Label>
-                    <div
-                      onDrop={handleDrop}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center cursor-pointer transition-colors ${
-                        dragOver
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50 hover:bg-muted/50"
-                      }`}
-                    >
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                        onChange={e => {
-                          if (e.target.files) handleFiles(e.target.files);
-                          e.target.value = "";
-                        }}
+              {/* Image Upload Zone — always visible */}
+              <div className="space-y-1.5">
+                <Label>Product Images</Label>
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center cursor-pointer transition-colors ${
+                    dragOver
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50 hover:bg-muted/50"
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={e => {
+                      if (e.target.files) handleFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Upload className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1.5 sm:mb-2 text-muted-foreground/50" />
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {uploading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
+                      </span>
+                    ) : (
+                      <>
+                        Drag & drop images here, or <span className="text-primary font-medium">browse</span>
+                      </>
+                    )}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground/60 mt-1">
+                    PNG, JPG, WebP up to 10MB each. First image is the main product image.
+                  </p>
+                </div>
+              </div>
+
+              {/* Image previews */}
+              {allImages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {allImages.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <img
+                        src={url}
+                        alt={`Image ${i + 1}`}
+                        className="h-16 w-16 sm:h-20 sm:w-20 rounded border border-border object-cover"
                       />
-                      <Upload className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1.5 sm:mb-2 text-muted-foreground/50" />
-                      <p className="text-xs sm:text-sm text-muted-foreground">
-                        {uploading ? (
-                          <span className="flex items-center justify-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
-                          </span>
-                        ) : (
-                          <>
-                            Drag & drop images here, or <span className="text-primary font-medium">browse</span>
-                          </>
+                      {i === 0 && (
+                        <span className="absolute -top-1 -left-1 bg-primary text-white text-[9px] font-bold px-1 rounded">
+                          MAIN
+                        </span>
+                      )}
+                      <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {i > 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
+                            className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
+                          >
+                            {"\u2190"}
+                          </button>
                         )}
-                      </p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground/60 mt-1">
-                        PNG, JPG, WebP up to 10MB each. First image is the main product image.
-                      </p>
+                        {i < allImages.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
+                            className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
+                          >
+                            {"\u2192"}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                          className="bg-destructive text-white rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-destructive/80"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              )}
 
-                  {/* Image previews */}
-                  {allImages.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {allImages.map((url, i) => (
-                        <div key={i} className="relative group">
-                          <img
-                            src={url}
-                            alt={`Image ${i + 1}`}
-                            className="h-16 w-16 sm:h-20 sm:w-20 rounded border border-border object-cover"
-                          />
-                          {i === 0 && (
-                            <span className="absolute -top-1 -left-1 bg-primary text-white text-[9px] font-bold px-1 rounded">
-                              MAIN
-                            </span>
-                          )}
-                          <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {i > 0 && (
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
-                                className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
-                              >
-                                {"\u2190"}
-                              </button>
-                            )}
-                            {i < allImages.length - 1 && (
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
-                                className="bg-muted border border-border rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-primary hover:text-white"
-                              >
-                                {"\u2192"}
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                              className="bg-destructive text-white rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-destructive/80"
-                            >
-                              <X className="h-2.5 w-2.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              {/* Manual URL fallback */}
+              <div className="space-y-1.5">
+                <Label htmlFor="p-image">Or paste Image URL</Label>
+                <Input
+                  id="p-image"
+                  value={form.imageUrl}
+                  onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                  placeholder="https://example.com/photo.jpg"
+                />
+              </div>
 
-                  {/* Manual URL fallback */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-image">Or paste Image URL</Label>
-                    <Input
-                      id="p-image"
-                      value={form.imageUrl}
-                      onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
-                      placeholder="https://example.com/photo.jpg"
-                    />
-                  </div>
-
-                  {/* Price for non-variable */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-price">Price (USD) *</Label>
-                    <Input
-                      id="p-price"
-                      value={form.price}
-                      onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                      placeholder="19.99"
-                      inputMode="decimal"
-                    />
-                  </div>
-                </>
+              {/* Price — only for non-variable products */}
+              {!form.isVariable && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="p-price">Price (USD) *</Label>
+                  <Input
+                    id="p-price"
+                    value={form.price}
+                    onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+                    placeholder="19.99"
+                    inputMode="decimal"
+                  />
+                </div>
               )}
 
               {/* Variable Product Toggle */}
