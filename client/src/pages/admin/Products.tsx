@@ -96,7 +96,9 @@ export default function AdminProducts() {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [variantUploading, setVariantUploading] = useState<string | null>(null);
+  const [variantDragOver, setVariantDragOver] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const variantFileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     if (new URLSearchParams(searchString).get("new") === "1") {
@@ -725,34 +727,66 @@ export default function AdminProducts() {
                           </div>
                         </div>
 
-                        {/* Variant image */}
-                        <div className="flex items-center gap-2 pl-6">
+                        {/* Variant image — drag-and-drop zone */}
+                        <div className="pl-6">
                           {variant.imageUrl ? (
-                            <div className="relative group">
+                            <div className="relative group inline-block">
                               <img
                                 src={variant.imageUrl}
                                 alt={variant.name || "Variant"}
-                                className="h-14 w-14 rounded border border-border object-cover"
+                                className="h-20 w-20 sm:h-24 sm:w-24 rounded-lg border border-border object-cover"
                               />
                               <button
                                 type="button"
                                 onClick={() => updateVariant(variant.id, "imageUrl", "")}
-                                className="absolute -top-1 -right-1 bg-destructive text-white rounded-full h-4 w-4 flex items-center justify-center text-[8px] hover:bg-destructive/80"
+                                className="absolute -top-1.5 -right-1.5 bg-destructive text-white rounded-full h-5 w-5 flex items-center justify-center text-[10px] hover:bg-destructive/80 shadow-sm"
                               >
-                                <X className="h-2.5 w-2.5" />
+                                <X className="h-3 w-3" />
                               </button>
+                              <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <label className="cursor-pointer text-white text-[10px] font-medium px-2 py-1 bg-white/20 rounded backdrop-blur-sm hover:bg-white/30 transition-colors">
+                                  Replace
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={e => {
+                                      if (e.target.files?.[0]) handleVariantFile(variant.id, e.target.files[0]);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </label>
+                              </div>
                             </div>
                           ) : (
-                            <label className="h-14 w-14 rounded border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors">
-                              {variantUploading === variant.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/50" />
-                              ) : (
-                                <>
-                                  <Upload className="h-3.5 w-3.5 text-muted-foreground/40" />
-                                  <span className="text-[8px] text-muted-foreground/50 mt-0.5">Image</span>
-                                </>
-                              )}
+                            <div
+                              onDrop={e => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setVariantDragOver(null);
+                                if (e.dataTransfer.files.length > 0) {
+                                  handleVariantFile(variant.id, e.dataTransfer.files[0]);
+                                }
+                              }}
+                              onDragOver={e => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setVariantDragOver(variant.id);
+                              }}
+                              onDragLeave={e => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setVariantDragOver(null);
+                              }}
+                              onClick={() => variantFileRefs.current[variant.id]?.click()}
+                              className={`h-20 w-20 sm:h-24 sm:w-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                                variantDragOver === variant.id
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-primary/50 hover:bg-muted/50"
+                              }`}
+                            >
                               <input
+                                ref={el => { variantFileRefs.current[variant.id] = el; }}
                                 type="file"
                                 accept="image/*"
                                 className="hidden"
@@ -761,11 +795,16 @@ export default function AdminProducts() {
                                   e.target.value = "";
                                 }}
                               />
-                            </label>
+                              {variantUploading === variant.id ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/50" />
+                              ) : (
+                                <>
+                                  <Upload className="h-5 w-5 text-muted-foreground/40" />
+                                  <span className="text-[9px] text-muted-foreground/50 mt-1">Drop image</span>
+                                </>
+                              )}
+                            </div>
                           )}
-                          <div className="text-[10px] text-muted-foreground">
-                            {variant.imageUrl ? "Image set" : "Upload an image for this variant"}
-                          </div>
                         </div>
                       </div>
                     ))}
