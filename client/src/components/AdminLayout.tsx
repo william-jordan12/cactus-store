@@ -1,5 +1,5 @@
 import AdminBar from "@/components/AdminBar";
-import { Boxes, LayoutDashboard, MessageSquare, Settings, ShoppingBag, Store, Tags } from "lucide-react";
+import { Boxes, LayoutDashboard, Settings, ShoppingBag, Store, Tags } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 const NAV_ITEMS = [
@@ -7,7 +7,6 @@ const NAV_ITEMS = [
   { href: "/admin/products", label: "Products", icon: Boxes },
   { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
-  { href: "/admin/chat", label: "Live Chat", icon: MessageSquare },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

@@ -17,7 +17,6 @@ const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const AdminProducts = lazy(() => import("./pages/admin/Products"));
 const AdminCategories = lazy(() => import("./pages/admin/Categories"));
 const AdminOrders = lazy(() => import("./pages/admin/Orders"));
-const AdminChat = lazy(() => import("./pages/admin/Chat"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 const About = lazy(() => import("./pages/About"));
 const FAQ = lazy(() => import("./pages/FAQ"));
@@ -78,11 +77,6 @@ function Router() {
         <Route path={"/admin/orders"}>
           <AdminGuard>
             <AdminOrders />
-          </AdminGuard>
-        </Route>
-        <Route path={"/admin/chat"}>
-          <AdminGuard>
-            <AdminChat />
           </AdminGuard>
         </Route>
         <Route path={"/admin/settings"}>
