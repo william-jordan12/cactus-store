@@ -12,4 +12,14 @@ export interface CartItem {
   imageUrl: string | null;
   priceCents: number;
   quantity: number;
+  /** For variable products: the selected variant name. */
+  variantName?: string;
+}
+
+/** A sub-product (variant) within a variable product. */
+export interface ProductVariant {
+  id: string;
+  name: string;
+  imageUrl: string;
+  priceCents: number;
 }

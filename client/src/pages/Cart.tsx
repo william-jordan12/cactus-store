@@ -2,7 +2,6 @@ import StoreLayout from "@/components/StoreLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -105,7 +104,20 @@ function PaymentLogo({ method }: { method: string }) {
   }
 }
 
-const CHECKOUT_KEY = "store_checkout_v1";
+const CHECKOUT_KEY = "store_checkout_v2";
+
+interface AddressFields {
+  street: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+}
+
+function formatAddress(fields: AddressFields): string {
+  const parts = [fields.street, fields.city, fields.state, fields.postcode, fields.country].filter(Boolean);
+  return parts.join(", ");
+}
 
 function loadCheckout() {
   try {
@@ -115,8 +127,83 @@ function loadCheckout() {
   } catch { return null; }
 }
 
-function saveCheckout(data: Record<string, string | boolean>) {
+function saveCheckout(data: Record<string, string | boolean | AddressFields>) {
   try { sessionStorage.setItem(CHECKOUT_KEY, JSON.stringify(data)); } catch { /* */ }
+}
+
+function AddressFieldGroup({
+  prefix,
+  label,
+  values,
+  onChange,
+  showLabel = true,
+}: {
+  prefix: "shipping" | "billing";
+  label: string;
+  values: AddressFields;
+  onChange: (field: keyof AddressFields, value: string) => void;
+  showLabel?: boolean;
+}) {
+  const idPrefix = `co-${prefix}`;
+  return (
+    <div className="space-y-2">
+      {showLabel && <div className="text-xs font-semibold text-foreground">{label}</div>}
+      <div className="space-y-1.5">
+        <Label htmlFor={`${idPrefix}-street`} className="text-[11px]">Street address *</Label>
+        <Input
+          id={`${idPrefix}-street`}
+          value={values.street}
+          onChange={e => onChange("street", e.target.value)}
+          placeholder="123 Main St, Apt 4B"
+          className="h-9 text-sm"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-city`} className="text-[11px]">City *</Label>
+          <Input
+            id={`${idPrefix}-city`}
+            value={values.city}
+            onChange={e => onChange("city", e.target.value)}
+            placeholder="Austin"
+            className="h-9 text-sm"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-state`} className="text-[11px]">State *</Label>
+          <Input
+            id={`${idPrefix}-state`}
+            value={values.state}
+            onChange={e => onChange("state", e.target.value)}
+            placeholder="TX"
+            className="h-9 text-sm"
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-postcode`} className="text-[11px]">Postal code *</Label>
+          <Input
+            id={`${idPrefix}-postcode`}
+            value={values.postcode}
+            onChange={e => onChange("postcode", e.target.value)}
+            placeholder="78701"
+            className="h-9 text-sm"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-country`} className="text-[11px]">Country *</Label>
+          <Input
+            id={`${idPrefix}-country`}
+            value={values.country}
+            onChange={e => onChange("country", e.target.value)}
+            placeholder="United States"
+            className="h-9 text-sm"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Cart() {
@@ -132,15 +219,18 @@ export default function Cart() {
   const [name, setName] = useState(saved?.name ?? "");
   const [email, setEmail] = useState(saved?.email ?? "");
   const [phone, setPhone] = useState(saved?.phone ?? "");
-  const [shippingAddress, setShippingAddress] = useState(saved?.shippingAddress ?? "");
-  const [billingAddress, setBillingAddress] = useState(saved?.billingAddress ?? "");
+  const [shipping, setShipping] = useState<AddressFields>(saved?.shipping ?? { street: "", city: "", state: "", postcode: "", country: "" });
+  const [billing, setBilling] = useState<AddressFields>(saved?.billing ?? { street: "", city: "", state: "", postcode: "", country: "" });
   const [sameAsShipping, setSameAsShipping] = useState(saved?.sameAsShipping ?? true);
+
+  const setShippingField = (field: keyof AddressFields, value: string) => setShipping(prev => ({ ...prev, [field]: value }));
+  const setBillingField = (field: keyof AddressFields, value: string) => setBilling(prev => ({ ...prev, [field]: value }));
 
   useEffect(() => {
     if (step === "checkout") {
-      saveCheckout({ name, email, phone, shippingAddress, billingAddress, sameAsShipping: String(sameAsShipping) });
+      saveCheckout({ name, email, phone, shipping, billing, sameAsShipping: String(sameAsShipping) });
     }
-  }, [step, name, email, phone, shippingAddress, billingAddress, sameAsShipping]);
+  }, [step, name, email, phone, shipping, billing, sameAsShipping]);
 
   const [placedOrder, setPlacedOrder] = useState<{
     orderId: number;
@@ -183,10 +273,24 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
     if (!name.trim()) return toast.error("Please enter your name");
     if (!email.trim()) return toast.error("Please enter your email");
     if (!phone.trim()) return toast.error("Please enter your phone number");
-    if (shippingAddress.trim().length < 5) return toast.error("Please enter your shipping address");
-    const billing = sameAsShipping ? shippingAddress : billingAddress;
-    if (billing.trim().length < 5) return toast.error("Please enter your billing address");
+    if (!shipping.street.trim()) return toast.error("Shipping: street address is required");
+    if (!shipping.city.trim()) return toast.error("Shipping: city is required");
+    if (!shipping.state.trim()) return toast.error("Shipping: state is required");
+    if (!shipping.postcode.trim()) return toast.error("Shipping: postal code is required");
+    if (!shipping.country.trim()) return toast.error("Shipping: country is required");
+
+    if (!sameAsShipping) {
+      if (!billing.street.trim()) return toast.error("Billing: street address is required");
+      if (!billing.city.trim()) return toast.error("Billing: city is required");
+      if (!billing.state.trim()) return toast.error("Billing: state is required");
+      if (!billing.postcode.trim()) return toast.error("Billing: postal code is required");
+      if (!billing.country.trim()) return toast.error("Billing: country is required");
+    }
+
     if (!selectedPayment) return toast.error("Please select a payment method");
+
+    const shippingStr = formatAddress(shipping);
+    const billingStr = sameAsShipping ? shippingStr : formatAddress(billing);
 
     try {
       const result = await placeOrder.mutateAsync({
@@ -194,8 +298,8 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
         customerName: name.trim(),
         customerEmail: email.trim(),
         customerPhone: phone.trim(),
-        shippingAddress: shippingAddress.trim(),
-        billingAddress: billing.trim(),
+        shippingAddress: shippingStr,
+        billingAddress: billingStr,
         paymentMethod: selectedPayment as never,
       });
       setPlacedOrder({
@@ -203,8 +307,8 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
         totalCents: result.totalCents,
         paymentMethod: result.paymentMethod,
         items: result.items,
-        shippingAddress: shippingAddress.trim(),
-        billingAddress: billing.trim(),
+        shippingAddress: shippingStr,
+        billingAddress: billingStr,
       });
       clearCart();
     } catch (err) {
@@ -223,7 +327,7 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
 
   const openEmail = () => {
     const msg = buildPaymentMessage();
-    const subject = encodeURIComponent(`Order #${placedOrder?.orderId} - Payment via ${placedOrder?.paymentMethod}`);
+    const subject = encodeURIComponent(`Payment via ${placedOrder?.paymentMethod}`);
     const body = encodeURIComponent(msg);
     window.open(`mailto:${contactEmail}?subject=${subject}&body=${body}`, "_blank");
   };
@@ -237,9 +341,9 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
             <CheckCircle2 className="h-12 w-12 text-primary mb-3" />
             <h1 className="font-display text-xl md:text-2xl font-black mb-1">Order Confirmed!</h1>
             <p className="text-muted-foreground text-sm">
-              Order <span className="font-bold text-foreground">#{placedOrder.orderId}</span> for{" "}
+              Your order for{" "}
               <span className="font-bold text-foreground">{formatPrice(placedOrder.totalCents)}</span> via{" "}
-              <span className="font-bold text-foreground">{placedOrder.paymentMethod}</span>.
+              <span className="font-bold text-foreground">{placedOrder.paymentMethod}</span> has been received.
             </p>
           </div>
 
@@ -434,17 +538,14 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
               <Label htmlFor="co-phone" className="text-xs">Phone number *</Label>
               <Input id="co-phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 555 123 4567" className="h-9 text-sm" />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="co-shipping" className="text-xs">Shipping address *</Label>
-              <Textarea
-                id="co-shipping"
-                value={shippingAddress}
-                onChange={e => setShippingAddress(e.target.value)}
-                placeholder="Street, city, state, postal code, country"
-                rows={2}
-                className="text-sm resize-none"
-              />
-            </div>
+
+            <AddressFieldGroup
+              prefix="shipping"
+              label="Shipping Address"
+              values={shipping}
+              onChange={setShippingField}
+            />
+
             <div className="flex items-center gap-2">
               <Checkbox id="co-same" checked={sameAsShipping} onCheckedChange={v => setSameAsShipping(v === true)} />
               <Label htmlFor="co-same" className="text-xs font-normal cursor-pointer">
@@ -452,17 +553,12 @@ Please send me the payment instructions for ${placedOrder.paymentMethod}. Thank 
               </Label>
             </div>
             {!sameAsShipping && (
-              <div className="space-y-1">
-                <Label htmlFor="co-billing" className="text-xs">Billing address *</Label>
-                <Textarea
-                  id="co-billing"
-                  value={billingAddress}
-                  onChange={e => setBillingAddress(e.target.value)}
-                  placeholder="Street, city, state, postal code, country"
-                  rows={2}
-                  className="text-sm resize-none"
-                />
-              </div>
+              <AddressFieldGroup
+                prefix="billing"
+                label="Billing Address"
+                values={billing}
+                onChange={setBillingField}
+              />
             )}
 
             {/* Payment method grid */}

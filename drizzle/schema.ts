@@ -52,6 +52,10 @@ export const products = mysqlTable("products", {
   imageUrl: mediumtext("imageUrl"),
   images: mediumtext("images"),
   priceCents: int("priceCents").notNull(),
+  priceEndCents: int("priceEndCents"),
+  inStock: boolean("inStock").default(true).notNull(),
+  isVariable: boolean("isVariable").default(false).notNull(),
+  variants: mediumtext("variants"),
   categoryId: int("categoryId"),
   description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -131,3 +135,15 @@ export const reviews = mysqlTable("reviews", {
 
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = typeof reviews.$inferInsert;
+
+/** Live chat messages between customers and admin. */
+export const chatMessages = mysqlTable("chatMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: varchar("conversationId", { length: 64 }).notNull(),
+  sender: mysqlEnum("sender", ["customer", "admin", "bot"]).notNull(),
+  text: text("text").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;

@@ -1,8 +1,10 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gt, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   categories,
+  chatMessages,
   InsertCategory,
+  InsertChatMessage,
   InsertOrder,
   InsertOrderItem,
   InsertProduct,
@@ -51,6 +53,60 @@ export async function getDb() {
         }
       } catch (e: any) {
         console.warn("[Database] images column migration:", e?.message);
+      }
+      // Auto-migrate: create chatMessages table if missing
+      try {
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS chatMessages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            conversationId VARCHAR(64) NOT NULL,
+            sender ENUM('customer','admin','bot') NOT NULL,
+            text TEXT NOT NULL,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            INDEX idx_chat_conv (conversationId),
+            INDEX idx_chat_created (createdAt)
+          )
+        `);
+      } catch (e: any) {
+        console.warn("[Database] chatMessages migration:", e?.message);
+      }
+      // Auto-migrate: add priceEndCents and inStock columns if missing
+      try {
+        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'priceEndCents'");
+        if ((cols as any[]).length === 0) {
+          await conn.execute("ALTER TABLE products ADD COLUMN `priceEndCents` INT NULL AFTER `priceCents`");
+          console.log("[Database] Added 'priceEndCents' column to products table");
+        }
+      } catch (e: any) {
+        console.warn("[Database] priceEndCents migration:", e?.message);
+      }
+      try {
+        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'inStock'");
+        if ((cols as any[]).length === 0) {
+          await conn.execute("ALTER TABLE products ADD COLUMN `inStock` BOOLEAN NOT NULL DEFAULT TRUE AFTER `priceEndCents`");
+          console.log("[Database] Added 'inStock' column to products table");
+        }
+      } catch (e: any) {
+        console.warn("[Database] inStock migration:", e?.message);
+      }
+      // Auto-migrate: add isVariable and variants columns if missing
+      try {
+        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'isVariable'");
+        if ((cols as any[]).length === 0) {
+          await conn.execute("ALTER TABLE products ADD COLUMN `isVariable` BOOLEAN NOT NULL DEFAULT FALSE AFTER `inStock`");
+          console.log("[Database] Added 'isVariable' column to products table");
+        }
+      } catch (e: any) {
+        console.warn("[Database] isVariable migration:", e?.message);
+      }
+      try {
+        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'variants'");
+        if ((cols as any[]).length === 0) {
+          await conn.execute("ALTER TABLE products ADD COLUMN `variants` MEDIUMTEXT NULL AFTER `isVariable`");
+          console.log("[Database] Added 'variants' column to products table");
+        }
+      } catch (e: any) {
+        console.warn("[Database] variants migration:", e?.message);
       }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -258,6 +314,13 @@ export async function listOrdersWithItems() {
   }));
 }
 
+export async function deleteOrder(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(orderItems).where(eq(orderItems.orderId, id));
+  await db.delete(orders).where(eq(orders.id, id));
+}
+
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
@@ -315,4 +378,93 @@ export async function deleteReview(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(reviews).where(eq(reviews.id, id));
+}
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
+export async function deleteChatConversation(conversationId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(chatMessages).where(eq(chatMessages.conversationId, conversationId));
+}
+
+export async function sendChatMessage(data: InsertChatMessage) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(chatMessages).values(data);
+  return result.insertId;
+}
+
+export async function getChatMessages(conversationId: string, afterId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(chatMessages.conversationId, conversationId)];
+  if (afterId) {
+    conditions.push(gt(chatMessages.id, afterId));
+  }
+  return db
+    .select()
+    .from(chatMessages)
+    .where(and(...conditions))
+    .orderBy(chatMessages.createdAt);
+}
+
+export async function listChatConversations() {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get the most recent message per conversation using a subquery approach
+  const latestPerConv = await db.execute(`
+    SELECT conversationId, MAX(id) as maxId
+    FROM chatMessages
+    GROUP BY conversationId
+    ORDER BY maxId DESC
+    LIMIT 50
+  `);
+
+  const convIds = (latestPerConv as any[]).map((r: any) => r.maxId);
+  if (convIds.length === 0) return [];
+
+  const latestMessages = await db
+    .select()
+    .from(chatMessages)
+    .where(or(...convIds.map((id: number) => eq(chatMessages.id, id))));
+
+  // Count unread customer messages per conversation
+  const unreadRows = await db.execute(`
+    SELECT conversationId, COUNT(*) as cnt
+    FROM chatMessages
+    WHERE sender = 'customer'
+      AND id > (
+        SELECT COALESCE(MAX(id), 0)
+        FROM chatMessages
+        WHERE sender IN ('admin', 'bot')
+          AND conversationId = chatMessages.conversationId
+      )
+    GROUP BY conversationId
+  `);
+
+  const unreadMap = new Map<string, number>();
+  for (const row of unreadRows as any[]) {
+    unreadMap.set(row.conversationId, Number(row.cnt));
+  }
+
+  const msgMap = new Map(latestMessages.map(m => [m.id, m]));
+
+  return (latestPerConv as any[])
+    .map((row: any) => {
+      const msg = msgMap.get(row.maxId);
+      if (!msg) return null;
+      return {
+        conversationId: msg.conversationId,
+        lastMessage: msg.text,
+        lastSender: msg.sender,
+        lastAt: msg.createdAt,
+        unread: unreadMap.get(msg.conversationId) ?? 0,
+      };
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => b.lastAt.getTime() - a.lastAt.getTime());
 }

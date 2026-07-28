@@ -1,97 +1,54 @@
-import { MessageCircle, X, Send, Headphones } from "lucide-react";
+import { MessageCircle, X, Send, Headphones, Mail, CheckCircle2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-
-type ChatMessage = {
-  id: number;
-  sender: "user" | "support";
-  text: string;
-  time: string;
-};
-
-const WELCOME_MESSAGES: ChatMessage[] = [
-  {
-    id: 1,
-    sender: "support",
-    text: "Hi there! Welcome to Cactus Store support. How can we help you today?",
-    time: "now",
-  },
-  {
-    id: 2,
-    sender: "support",
-    text: "You can ask us about orders, shipping, plant care, or anything else!",
-    time: "now",
-  },
-];
-
-const QUICK_REPLIES = [
-  "Where is my order?",
-  "Shipping info",
-  "Plant care tips",
-  "Return policy",
-];
+import { trpc } from "@/lib/trpc";
 
 export default function SupportChat() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>(WELCOME_MESSAGES);
-  const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [sent, setSent] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  const { data: settings } = trpc.store.settings.useQuery();
+  const contactEmail = settings?.contactEmail || "peyoteseedsfarm@gmail.com";
 
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 200);
+      setTimeout(() => nameRef.current?.focus(), 200);
+      setSent(false);
     }
   }, [open]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !message.trim()) return;
 
-  const formatTime = () =>
-    new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    setSending(true);
 
-  const send = (text: string) => {
-    if (!text.trim()) return;
-    const userMsg: ChatMessage = {
-      id: Date.now(),
-      sender: "user",
-      text: text.trim(),
-      time: formatTime(),
-    };
-    setMessages(prev => [...prev, userMsg]);
-    setInput("");
+    // Build mailto link with the support message
+    const subject = encodeURIComponent(`Support Request from ${name.trim()}`);
+    const body = encodeURIComponent(
+      `Name: ${name.trim()}\nEmail: ${email.trim()}\n\nMessage:\n${message.trim()}`
+    );
+    const mailtoUrl = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
 
+    // Open the mail client
+    window.location.href = mailtoUrl;
+
+    // Show success state after a short delay
     setTimeout(() => {
-      const supportMsg: ChatMessage = {
-        id: Date.now() + 1,
-        sender: "support",
-        text: getAutoReply(text.trim()),
-        time: formatTime(),
-      };
-      setMessages(prev => [...prev, supportMsg]);
-    }, 800);
-  };
-
-  const getAutoReply = (msg: string): string => {
-    const lower = msg.toLowerCase();
-    if (lower.includes("order") || lower.includes("track"))
-      return "You can track your order using the tracking link sent to your email. If you can't find it, share your order number and we'll look it up.";
-    if (lower.includes("ship"))
-      return "We ship worldwide! Domestic orders arrive in 5-7 business days. International orders take 7-21 days. All plants are packed with care for safe transit.";
-    if (lower.includes("return") || lower.includes("refund"))
-      return "Due to the living nature of our products, we don't accept returns on live plants. If your order arrives damaged, contact us within 48 hours with photos and we'll make it right.";
-    if (lower.includes("care") || lower.includes("water") || lower.includes("light"))
-      return "Most cacti love bright, indirect light and well-draining soil. Water only when the soil is completely dry. In winter, reduce watering significantly. Each order includes a species-specific care card!";
-    if (lower.includes("seed") || lower.includes("germ"))
-      return "Our seeds are freshly harvested and tested for viability. Most species germinate within 7-14 days in warm conditions. Check the care card included with your order for specific instructions.";
-    if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey"))
-      return "Hello! Great to have you here. What can we help you with today?";
-    return "Thanks for reaching out! We'll get back to you as soon as we can. Check our FAQ page in the meantime — it covers most common questions.";
+      setSending(false);
+      setSent(true);
+      setName("");
+      setEmail("");
+      setMessage("");
+    }, 1000);
   };
 
   return (
     <>
-      {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
         className={`fixed bottom-5 right-5 z-[200] h-14 w-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
@@ -99,12 +56,11 @@ export default function SupportChat() {
             ? "bg-foreground text-background rotate-0"
             : "bg-[oklch(0.47_0.11_155)] text-white"
         }`}
-        aria-label={open ? "Close support chat" : "Open support chat"}
+        aria-label={open ? "Close support" : "Open support"}
       >
         {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
       </button>
 
-      {/* Chat panel */}
       {open && (
         <div className="fixed bottom-24 right-5 z-[200] w-[360px] max-w-[calc(100vw-2.5rem)] bg-white rounded-2xl shadow-2xl border border-border flex flex-col overflow-hidden"
           style={{ height: "min(520px, calc(100vh - 8rem))" }}
@@ -116,78 +72,92 @@ export default function SupportChat() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-sm">Customer Support</div>
-              <div className="text-white/70 text-xs">We typically reply within minutes</div>
+              <div className="text-white/70 text-xs">Send us a message anytime</div>
             </div>
-            <div className="h-2.5 w-2.5 rounded-full bg-green-400 shrink-0" />
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[oklch(0.985_0.002_155)]">
-            {messages.map(msg => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                    msg.sender === "user"
-                      ? "bg-[oklch(0.47_0.11_155)] text-white rounded-br-md"
-                      : "bg-white text-foreground border border-border shadow-sm rounded-bl-md"
-                  }`}
-                >
-                  {msg.text}
-                  <div
-                    className={`text-[10px] mt-1 ${
-                      msg.sender === "user" ? "text-white/50" : "text-muted-foreground"
-                    }`}
-                  >
-                    {msg.time}
-                  </div>
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 bg-[oklch(0.985_0.002_155)]">
+            {sent ? (
+              <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                <div className="h-14 w-14 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                  <CheckCircle2 className="h-7 w-7 text-green-600" />
                 </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Quick replies */}
-          {messages.length <= 3 && (
-            <div className="px-4 py-2 flex flex-wrap gap-1.5 border-t border-border bg-white shrink-0">
-              {QUICK_REPLIES.map(reply => (
+                <h3 className="font-bold text-foreground mb-1">Message Ready!</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Your email client has opened with the message. Send it to reach our team at <span className="font-medium text-foreground">{contactEmail}</span>.
+                </p>
                 <button
-                  key={reply}
-                  onClick={() => send(reply)}
-                  className="text-xs px-3 py-1.5 rounded-full border border-[oklch(0.47_0.11_155)]/30 text-[oklch(0.47_0.11_155)] hover:bg-[oklch(0.47_0.11_155)]/5 transition-colors font-medium"
+                  onClick={() => setSent(false)}
+                  className="text-sm font-medium text-[oklch(0.47_0.11_155)] hover:underline"
                 >
-                  {reply}
+                  Send another message
                 </button>
-              ))}
-            </div>
-          )}
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="text-center mb-2">
+                  <div className="h-10 w-10 rounded-full bg-[oklch(0.47_0.11_155)]/10 flex items-center justify-center mx-auto mb-2">
+                    <Mail className="h-5 w-5 text-[oklch(0.47_0.11_155)]" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Your message will be sent directly to our support email.
+                  </p>
+                </div>
 
-          {/* Input */}
-          <div className="px-3 py-3 border-t border-border bg-white shrink-0">
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                send(input);
-              }}
-              className="flex items-center gap-2"
-            >
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Type your message…"
-                className="flex-1 bg-muted/50 rounded-full px-4 py-2.5 text-sm outline-none border border-border focus:border-[oklch(0.47_0.11_155)] transition-colors"
-              />
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                className="h-10 w-10 rounded-full bg-[oklch(0.47_0.11_155)] text-white flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </form>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Your Name</label>
+                  <input
+                    ref={nameRef}
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="John Doe"
+                    required
+                    className="w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-[oklch(0.47_0.11_155)] transition-colors bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Your Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="john@example.com"
+                    required
+                    className="w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-[oklch(0.47_0.11_155)] transition-colors bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Message</label>
+                  <textarea
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    placeholder="How can we help you?"
+                    required
+                    rows={4}
+                    className="w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-[oklch(0.47_0.11_155)] transition-colors resize-none bg-white"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!name.trim() || !email.trim() || !message.trim() || sending}
+                  className="w-full h-10 rounded-lg bg-[oklch(0.47_0.11_155)] text-white flex items-center justify-center gap-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {sending ? (
+                    <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      Send Message
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

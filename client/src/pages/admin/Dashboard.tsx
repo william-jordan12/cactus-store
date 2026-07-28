@@ -22,18 +22,18 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout title="Dashboard">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
         {stats.map(stat => {
           const Icon = stat.icon;
           return (
             <Link key={stat.label} href={stat.href}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
+                <CardHeader className="pb-1 md:pb-2 flex flex-row items-center justify-between space-y-0 px-3 md:px-6 pt-3 md:pt-6">
+                  <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
                   <Icon className="h-4 w-4 text-primary" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-black font-display">{stat.value}</div>
+                <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+                  <div className="text-xl md:text-2xl font-black font-display">{stat.value}</div>
                 </CardContent>
               </Card>
             </Link>
@@ -42,10 +42,10 @@ export default function AdminDashboard() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="px-3 md:px-6 pt-3 md:pt-6">
           <CardTitle className="text-base">Quick start</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
+        <CardContent className="px-3 md:px-6 pb-3 md:pb-6 text-sm text-muted-foreground space-y-2">
           <p>1. Create your product categories under <Link href="/admin/categories" className="text-primary underline">Categories</Link>.</p>
           <p>2. Add products with images and prices under <Link href="/admin/products" className="text-primary underline">Products</Link>.</p>
           <p>3. Configure your WhatsApp number and payment options under <Link href="/admin/settings" className="text-primary underline">Settings</Link>.</p>

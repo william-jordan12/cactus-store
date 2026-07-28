@@ -18,6 +18,10 @@ const productInput = z.object({
   imageUrl: z.string().trim().max(10_000_000).nullish(),
   images: z.array(z.string().trim().max(10_000_000)).nullish(),
   priceCents: z.number().int().min(0),
+  priceEndCents: z.number().int().min(0).nullish(),
+  inStock: z.boolean().optional().default(true),
+  isVariable: z.boolean().optional().default(false),
+  variants: z.string().trim().max(1_000_000).nullish(),
   categoryId: z.number().int().positive().nullish(),
   description: z.string().trim().max(10000).nullish(),
 });
@@ -55,6 +59,10 @@ export const adminRouter = router({
         imageUrl,
         images: JSON.stringify(images),
         priceCents: input.priceCents,
+        priceEndCents: input.priceEndCents ?? null,
+        inStock: input.inStock ?? true,
+        isVariable: input.isVariable ?? false,
+        variants: input.variants ?? null,
         categoryId: input.categoryId ?? null,
         description: input.description ?? null,
       });
@@ -71,6 +79,10 @@ export const adminRouter = router({
           imageUrl,
           images: JSON.stringify(images),
           priceCents: data.priceCents,
+          priceEndCents: data.priceEndCents ?? null,
+          inStock: data.inStock ?? true,
+          isVariable: data.isVariable ?? false,
+          variants: data.variants ?? null,
           categoryId: data.categoryId ?? null,
           description: data.description ?? null,
         });
@@ -110,6 +122,12 @@ export const adminRouter = router({
   /** Orders tracker */
   orders: router({
     list: adminProcedure.query(() => db.listOrdersWithItems()),
+    delete: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await db.deleteOrder(input.id);
+        return { success: true };
+      }),
   }),
 
   /** Review moderation */
