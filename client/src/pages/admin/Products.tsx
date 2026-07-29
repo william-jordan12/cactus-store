@@ -87,7 +87,7 @@ export default function AdminProducts() {
   const utils = trpc.useUtils();
   const searchString = useSearch();
   const { data: products, isLoading } = trpc.admin.products.list.useQuery();
-  const { data: categories } = trpc.admin.categories.useQuery();
+  const { data: categories } = trpc.admin.categories.list.useQuery();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
