@@ -29,7 +29,7 @@ import {
   Trash2,
   Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 
@@ -222,6 +222,16 @@ export default function Cart() {
   const [shipping, setShipping] = useState<AddressFields>(saved?.shipping ?? { street: "", city: "", state: "", postcode: "", country: "" });
   const [billing, setBilling] = useState<AddressFields>(saved?.billing ?? { street: "", city: "", state: "", postcode: "", country: "" });
   const [sameAsShipping, setSameAsShipping] = useState(saved?.sameAsShipping ?? true);
+
+  // Pre-fill email with the store's contact email as a default, unless the
+  // customer already had an email stored in their checkout session.
+  const emailDefaulted = useRef(Boolean(saved?.email));
+  useEffect(() => {
+    if (!emailDefaulted.current && settings?.contactEmail) {
+      emailDefaulted.current = true;
+      setEmail(settings.contactEmail);
+    }
+  }, [settings?.contactEmail]);
 
   const setShippingField = (field: keyof AddressFields, value: string) => setShipping(prev => ({ ...prev, [field]: value }));
   const setBillingField = (field: keyof AddressFields, value: string) => setBilling(prev => ({ ...prev, [field]: value }));
