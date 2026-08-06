@@ -66,7 +66,7 @@ function PostView({ slug }: { slug: string }) {
           publisher: { "@type": "Organization", name: "Peyote Seeds Farm" },
           mainEntityOfPage: {
             "@type": "WebPage",
-            "@id": `https://cactus-store-9zio.onrender.com/blog/${post.slug}`,
+            "@id": `https://peyoteseedsvault.com/blog/${post.slug}`,
           },
         }
       : null,
@@ -79,9 +79,9 @@ function PostView({ slug }: { slug: string }) {
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: "https://cactus-store-9zio.onrender.com" },
-            { "@type": "ListItem", position: 2, name: "Blog", item: "https://cactus-store-9zio.onrender.com/blog" },
-            { "@type": "ListItem", position: 3, name: post.title, item: `https://cactus-store-9zio.onrender.com/blog/${post.slug}` },
+            { "@type": "ListItem", position: 1, name: "Home", item: "https://peyoteseedsvault.com" },
+            { "@type": "ListItem", position: 2, name: "Blog", item: "https://peyoteseedsvault.com/blog" },
+            { "@type": "ListItem", position: 3, name: post.title, item: `https://peyoteseedsvault.com/blog/${post.slug}` },
           ],
         }
       : null,

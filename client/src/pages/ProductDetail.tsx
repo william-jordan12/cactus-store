@@ -111,7 +111,7 @@ export default function ProductDetail() {
       priceCurrency: "USD",
       price: (displayPriceCents / 100).toFixed(2),
       availability: product.inStock === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
-      url: `https://cactus-store-9zio.onrender.com/product/${product.id}`,
+      url: `https://peyoteseedsvault.com/product/${product.id}`,
       itemCondition: "https://schema.org/NewCondition",
     },
   } : null);
@@ -120,16 +120,16 @@ export default function ProductDetail() {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://cactus-store-9zio.onrender.com/" },
-      { "@type": "ListItem", position: 2, name: "Shop", item: "https://cactus-store-9zio.onrender.com/shop" },
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://peyoteseedsvault.com/" },
+      { "@type": "ListItem", position: 2, name: "Shop", item: "https://peyoteseedsvault.com/shop" },
       ...(categoryName
-        ? [{ "@type": "ListItem", position: 3, name: categoryName, item: "https://cactus-store-9zio.onrender.com/shop" }]
+        ? [{ "@type": "ListItem", position: 3, name: categoryName, item: "https://peyoteseedsvault.com/shop" }]
         : []),
       {
         "@type": "ListItem",
         position: categoryName ? 4 : 3,
         name: product.title,
-        item: `https://cactus-store-9zio.onrender.com/product/${product.id}`,
+        item: `https://peyoteseedsvault.com/product/${product.id}`,
       },
     ],
   } : null);

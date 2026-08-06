@@ -128,9 +128,9 @@ export default function CategoryPage() {
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: "https://cactus-store-9zio.onrender.com" },
-            { "@type": "ListItem", position: 2, name: "Shop", item: "https://cactus-store-9zio.onrender.com/shop" },
-            { "@type": "ListItem", position: 3, name: category.name, item: `https://cactus-store-9zio.onrender.com/shop/category/${slugifyName(category.name)}` },
+            { "@type": "ListItem", position: 1, name: "Home", item: "https://peyoteseedsvault.com" },
+            { "@type": "ListItem", position: 2, name: "Shop", item: "https://peyoteseedsvault.com/shop" },
+            { "@type": "ListItem", position: 3, name: category.name, item: `https://peyoteseedsvault.com/shop/category/${slugifyName(category.name)}` },
           ],
         }
       : null,

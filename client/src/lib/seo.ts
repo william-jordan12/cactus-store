@@ -7,7 +7,7 @@ interface SeoOpts {
   ogImage?: string;
 }
 
-const BASE = "https://cactus-store-9zio.onrender.com";
+const BASE = "https://peyoteseedsvault.com";
 
 export function useSeo({ title, description, canonical, ogImage }: SeoOpts) {
   useEffect(() => {

@@ -99,7 +99,7 @@ async function startServer() {
   // so it takes precedence over the static sitemap.xml in the build output).
   app.get("/sitemap.xml", async (_req, res) => {
     try {
-      const base = "https://cactus-store-9zio.onrender.com";
+      const base = "https://peyoteseedsvault.com";
       let products: { id: number; updatedAt: Date }[] = [];
       try {
         products = await db.listProducts();
