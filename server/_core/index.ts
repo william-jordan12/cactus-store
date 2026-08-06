@@ -14,6 +14,7 @@ import { sdk } from "./sdk";
 import * as db from "../db";
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const";
 import { getSessionCookieOptions } from "./cookies";
+import { posts as blogPosts } from "../../client/src/lib/blogPosts";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -119,6 +120,9 @@ async function startServer() {
       const rows = [
         ...staticUrls.map(([loc, freq, priority]) =>
           `  <url>\n    <loc>${base}${loc}</loc>\n    <changefreq>${freq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`,
+        ),
+        ...blogPosts.map(p =>
+          `  <url>\n    <loc>${base}/blog/${p.slug}</loc>\n    <lastmod>${new Date(p.date).toISOString().slice(0, 10)}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`,
         ),
         ...products.map(p =>
           `  <url>\n    <loc>${base}/product/${p.id}</loc>\n    <lastmod>${new Date(p.updatedAt).toISOString().slice(0, 10)}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>`,

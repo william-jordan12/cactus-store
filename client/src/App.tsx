@@ -21,6 +21,7 @@ const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 const About = lazy(() => import("./pages/About"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const Blog = lazy(() => import("./pages/Blog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
 const Shipping = lazy(() => import("./pages/Shipping"));
 const Returns = lazy(() => import("./pages/Returns"));
 const Terms = lazy(() => import("./pages/Terms"));
@@ -50,6 +51,7 @@ function Router() {
         <Route path={"/about"} component={About} />
         <Route path={"/faq"} component={FAQ} />
         <Route path={"/blog"} component={Blog} />
+        <Route path={"/blog/:slug"} component={BlogPost} />
         <Route path={"/shipping"} component={Shipping} />
         <Route path={"/returns"} component={Returns} />
         <Route path={"/terms"} component={Terms} />
