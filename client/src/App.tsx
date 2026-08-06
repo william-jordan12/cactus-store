@@ -22,6 +22,7 @@ const About = lazy(() => import("./pages/About"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const Blog = lazy(() => import("./pages/Blog"));
 const BlogPost = lazy(() => import("./pages/BlogPost"));
+const CategoryPage = lazy(() => import("./pages/CategoryPage"));
 const Shipping = lazy(() => import("./pages/Shipping"));
 const Returns = lazy(() => import("./pages/Returns"));
 const Terms = lazy(() => import("./pages/Terms"));
@@ -44,6 +45,7 @@ function Router() {
       <Switch>
         <Route path={"/"} component={Home} />
         <Route path={"/shop"} component={Shop} />
+        <Route path={"/shop/category/:slug"} component={CategoryPage} />
         <Route path={"/reviews"} component={Reviews} />
         <Route path={"/product/:id"} component={ProductDetail} />
         <Route path={"/cart"} component={Cart} />

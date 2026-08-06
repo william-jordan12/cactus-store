@@ -8,6 +8,7 @@ import { Link, useSearch } from "wouter";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSeo } from "@/lib/seo";
+import { slugifyName } from "@/lib/slugify";
 
 function productDisplayPrice(product: { priceCents: number; priceEndCents: number | null; isVariable?: boolean; variants?: string | null }) {
   const isVar = (product as any).isVariable ?? false;
@@ -89,9 +90,9 @@ export default function Shop() {
               All
             </button>
             {categories.map(cat => (
-              <button
+              <Link
                 key={cat.id}
-                onClick={() => setCategoryId(cat.id === categoryId ? null : cat.id)}
+                href={`/shop/category/${slugifyName(cat.name)}`}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                   categoryId === cat.id
                     ? "bg-foreground text-background border-foreground"
@@ -99,7 +100,7 @@ export default function Shop() {
                 }`}
               >
                 {cat.name}
-              </button>
+              </Link>
             ))}
           </div>
         )}

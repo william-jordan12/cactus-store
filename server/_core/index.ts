@@ -15,6 +15,7 @@ import * as db from "../db";
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const";
 import { getSessionCookieOptions } from "./cookies";
 import { posts as blogPosts } from "../../client/src/lib/blogPosts";
+import { slugifyName } from "../../client/src/lib/slugify";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -117,9 +118,18 @@ async function startServer() {
         ["/terms", "monthly", 0.4],
         ["/privacy", "monthly", 0.4],
       ];
+      let categories: { id: number; name: string }[] = [];
+      try {
+        categories = await db.listCategories();
+      } catch (e) {
+        console.warn("[Sitemap] Categories unavailable:", e);
+      }
       const rows = [
         ...staticUrls.map(([loc, freq, priority]) =>
           `  <url>\n    <loc>${base}${loc}</loc>\n    <changefreq>${freq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`,
+        ),
+        ...categories.map(c =>
+          `  <url>\n    <loc>${base}/shop/category/${slugifyName(c.name)}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`,
         ),
         ...blogPosts.map(p =>
           `  <url>\n    <loc>${base}/blog/${p.slug}</loc>\n    <lastmod>${new Date(p.date).toISOString().slice(0, 10)}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`,
