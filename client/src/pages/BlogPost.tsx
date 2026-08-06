@@ -1,7 +1,7 @@
 import StoreLayout from "@/components/StoreLayout";
 import { useSeo, useJsonLd } from "@/lib/seo";
 import { getPostBySlug, getRelatedPosts } from "@/lib/blogPosts";
-import { Link, Route } from "wouter";
+import { Link, useParams } from "wouter";
 import { ArrowLeft, Calendar, Clock, ArrowRight } from "lucide-react";
 import NotFound from "@/pages/NotFound";
 
@@ -38,11 +38,8 @@ function renderContent(content: string) {
 }
 
 export default function BlogPost() {
-  return (
-    <Route path="/blog/:slug">
-      {({ slug }) => <PostView slug={slug ?? ""} />}
-    </Route>
-  );
+  const { slug } = useParams();
+  return <PostView slug={slug ?? ""} />;
 }
 
 function PostView({ slug }: { slug: string }) {
