@@ -14,7 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSeo } from "@/lib/seo";
 
 export default function Home() {
-  useSeo({ title: "Home", description: "Shop authentic cactus plants, rare seeds & cultivation supplies. Greenhouse-grown, ethically propagated. Discreet worldwide shipping on all orders.", canonical: "/" });
+  useSeo({ title: "Rare Cactus Plants & Seeds for Sale | Buy Peyote Seeds Online", description: "Shop authentic cactus plants, rare seeds & cultivation supplies. Greenhouse-grown, ethically propagated. Discreet worldwide shipping on all orders.", canonical: "/" });
   const searchString = useSearch();
   const urlSearch = useMemo(() => new URLSearchParams(searchString).get("search") ?? "", [searchString]);
   const [categoryId, setCategoryId] = useState<number | null>(null);

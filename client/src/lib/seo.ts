@@ -46,3 +46,24 @@ function setMeta(name: string, content: string) {
   }
   el.content = content;
 }
+
+/**
+ * Inject (or replace) a JSON-LD structured-data block into <head>.
+ * Each key manages a single script tag, so navigation between pages
+ * swaps schemas cleanly. Pass null to remove the block.
+ */
+export function useJsonLd(key: string, schema: object | null) {
+  useEffect(() => {
+    const id = `jsonld-${key}`;
+    document.getElementById(id)?.remove();
+    if (!schema) return;
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.id = id;
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+    return () => {
+      document.getElementById(id)?.remove();
+    };
+  }, [key, schema]);
+}

@@ -9,7 +9,7 @@ import { ImageOff, Minus, Plus, ChevronRight, Truck, ShieldCheck, Leaf, Check } 
 import { useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { toast } from "sonner";
-import { useSeo } from "@/lib/seo";
+import { useSeo, useJsonLd } from "@/lib/seo";
 
 export default function ProductDetail() {
   const params = useParams<{ id: string }>();
@@ -87,6 +87,52 @@ export default function ProductDetail() {
     }
     return formatPrice(product.priceCents);
   }, [product, isVariable, variants]);
+
+  // Representative single price (lowest) used for structured data.
+  const displayPriceCents = useMemo(() => {
+    if (isVariable && variants.length > 0) {
+      return Math.min(...variants.map(v => v.priceCents));
+    }
+    return product?.priceCents ?? 0;
+  }, [product, isVariable, variants]);
+
+  // Product rich-result schema (price, availability, images) + breadcrumbs.
+  useJsonLd("product", product ? {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    sku: `psf-${product.id}`,
+    description: product.description ?? product.title,
+    category: categoryName ?? "Cactus Plants & Seeds",
+    brand: { "@type": "Brand", name: "Peyote Seeds Farm" },
+    image: images.length > 0 ? images : [product.imageUrl].filter(Boolean),
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "USD",
+      price: (displayPriceCents / 100).toFixed(2),
+      availability: product.inStock === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+      url: `https://cactus-store-9zio.onrender.com/product/${product.id}`,
+      itemCondition: "https://schema.org/NewCondition",
+    },
+  } : null);
+
+  useJsonLd("breadcrumb", product ? {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://cactus-store-9zio.onrender.com/" },
+      { "@type": "ListItem", position: 2, name: "Shop", item: "https://cactus-store-9zio.onrender.com/shop" },
+      ...(categoryName
+        ? [{ "@type": "ListItem", position: 3, name: categoryName, item: "https://cactus-store-9zio.onrender.com/shop" }]
+        : []),
+      {
+        "@type": "ListItem",
+        position: categoryName ? 4 : 3,
+        name: product.title,
+        item: `https://cactus-store-9zio.onrender.com/product/${product.id}`,
+      },
+    ],
+  } : null);
 
   const handleAddToCart = () => {
     if (!product) return;

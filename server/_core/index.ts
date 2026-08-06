@@ -92,6 +92,47 @@ async function startServer() {
       createContext,
     })
   );
+
+  // Dynamic sitemap including every product URL (registered before static files
+  // so it takes precedence over the static sitemap.xml in the build output).
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const base = "https://cactus-store-9zio.onrender.com";
+      let products: { id: number; updatedAt: Date }[] = [];
+      try {
+        products = await db.listProducts();
+      } catch (e) {
+        console.warn("[Sitemap] Products unavailable, serving static pages only:", e);
+      }
+      const staticUrls: [string, string, number][] = [
+        ["/", "daily", 1.0],
+        ["/shop", "daily", 0.9],
+        ["/blog", "weekly", 0.7],
+        ["/reviews", "weekly", 0.7],
+        ["/faq", "monthly", 0.6],
+        ["/about", "monthly", 0.6],
+        ["/shipping", "monthly", 0.5],
+        ["/returns", "monthly", 0.5],
+        ["/terms", "monthly", 0.4],
+        ["/privacy", "monthly", 0.4],
+      ];
+      const rows = [
+        ...staticUrls.map(([loc, freq, priority]) =>
+          `  <url>\n    <loc>${base}${loc}</loc>\n    <changefreq>${freq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`,
+        ),
+        ...products.map(p =>
+          `  <url>\n    <loc>${base}/product/${p.id}</loc>\n    <lastmod>${new Date(p.updatedAt).toISOString().slice(0, 10)}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>`,
+        ),
+      ];
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${rows.join("\n")}\n</urlset>`;
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.send(xml);
+    } catch (e) {
+      console.error("[Sitemap] Failed:", e);
+      res.status(500).end("Internal Server Error");
+    }
+  });
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

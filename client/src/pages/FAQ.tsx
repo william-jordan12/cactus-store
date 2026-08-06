@@ -1,6 +1,6 @@
 import StoreLayout from "@/components/StoreLayout";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { useSeo } from "@/lib/seo";
+import { useSeo, useJsonLd } from "@/lib/seo";
 
 const faqs = [
   {
@@ -39,6 +39,16 @@ const faqs = [
 
 export default function FAQ() {
   useSeo({ title: "FAQ", description: "Frequently asked questions about ordering, shipping, payment methods, germination guarantee, and plant care at Peyote Seeds Farm.", canonical: "/faq" });
+
+  useJsonLd("faq", {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map(f => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: { "@type": "Answer", text: f.answer },
+    })),
+  });
 
   return (
     <StoreLayout>
