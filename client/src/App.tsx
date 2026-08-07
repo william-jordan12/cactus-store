@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import AdminGuard from "./components/AdminGuard";
 import CookieConsent from "./components/CookieConsent";
 import ErrorBoundary from "./components/ErrorBoundary";
+import TawkChat from "./components/TawkChat";
 import VisitTracker from "./components/VisitTracker";
 import { CartProvider } from "./contexts/CartContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -122,6 +123,7 @@ function App() {
             <Router />
             <CookieConsent />
             <VisitTracker />
+            <TawkChat />
           </CartProvider>
         </TooltipProvider>
       </ThemeProvider>
