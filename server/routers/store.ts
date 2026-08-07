@@ -4,9 +4,16 @@ import { publicProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getStripe, isStripeConfigured } from "../stripe";
 import { PAYMENT_METHODS } from "../../drizzle/schema";
+import { notifyOwner } from "../_core/notification";
 
 /** Minimum order total in cents ($100). */
 export const MINIMUM_ORDER_CENTS = 10000;
+
+/** A visitor is "new" if their ID has never been seen within this window. */
+const NEW_VISITOR_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** Throttle owner notifications to at most one per 15 minutes. */
+const VISITOR_NOTIF_COOLDOWN_MS = 15 * 60 * 1000;
 
 const cartItemInput = z.object({
   productId: z.number().int().positive(),
@@ -298,5 +305,61 @@ export const storeRouter = router({
       const order = await db.getOrderByStripeSessionId(input.sessionId);
       if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       return { paymentStatus: order.paymentStatus, totalCents: order.totalCents };
+    }),
+
+  /**
+   * Anonymous visit beacon. Records the page view and, when the owner has
+   * enabled visitor notifications, fires a notification for genuinely new
+   * visitors (ID never seen in the last 24h), throttled to one per 15 minutes.
+   */
+  trackVisit: publicProcedure
+    .input(
+      z.object({
+        visitorId: z.string().trim().min(1).max(64),
+        path: z.string().trim().max(500).optional().default("/"),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const ip =
+          (ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0] ?? "").trim() ||
+          (ctx.req.headers["cf-connecting-ip"]?.toString() ?? "");
+        const userAgent = ctx.req.headers["user-agent"]?.toString() ?? "";
+        await db.recordVisit({
+          visitorId: input.visitorId,
+          path: input.path,
+          userAgent: userAgent.slice(0, 500),
+          ip: ip.slice(0, 64) || null,
+        });
+
+        const all = await db.getAllSettings();
+        if (all.visitorNotificationsEnabled !== "true") {
+          return { recorded: true };
+        }
+
+        const isNew = !(await db.hasVisitorSeenWithin(input.visitorId, NEW_VISITOR_WINDOW_MS));
+        const now = Date.now();
+        const lastNotif = Number(all.lastVisitorNotifAt ?? 0);
+        if (!isNew || now - lastNotif < VISITOR_NOTIF_COOLDOWN_MS) {
+          return { recorded: true, newVisitor: isNew };
+        }
+
+        try {
+          const delivered = await notifyOwner({
+            title: "New visitor on your site",
+            content: `A new visitor just arrived at ${input.path || "/"} (${new Date().toLocaleString()}).`,
+          });
+          if (delivered) {
+            await db.setSetting("lastVisitorNotifAt", String(now));
+          }
+        } catch (e) {
+          console.warn("[Visit] Owner notification failed:", e);
+        }
+
+        return { recorded: true, newVisitor: isNew, notified: true };
+      } catch (e) {
+        console.warn("[Visit] Tracking failed:", e);
+        return { recorded: false };
+      }
     }),
 });

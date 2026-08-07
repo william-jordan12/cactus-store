@@ -10,12 +10,14 @@ import {
   InsertProduct,
   InsertReview,
   InsertUser,
+  InsertVisit,
   orderItems,
   orders,
   products,
   reviews,
   settings,
   users,
+  visits,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -69,6 +71,23 @@ export async function getDb() {
         `);
       } catch (e: any) {
         console.warn("[Database] chatMessages migration:", e?.message);
+      }
+      // Auto-migrate: create visits table if missing
+      try {
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS visits (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            visitorId VARCHAR(64) NOT NULL,
+            path VARCHAR(500) NOT NULL DEFAULT '/',
+            userAgent VARCHAR(500) NULL,
+            ip VARCHAR(64) NULL,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            INDEX idx_visits_visitor (visitorId),
+            INDEX idx_visits_created (createdAt)
+          )
+        `);
+      } catch (e: any) {
+        console.warn("[Database] visits migration:", e?.message);
       }
       // Auto-migrate: add priceEndCents and inStock columns if missing
       try {
@@ -467,4 +486,49 @@ export async function listChatConversations() {
     })
     .filter(Boolean)
     .sort((a: any, b: any) => b.lastAt.getTime() - a.lastAt.getTime());
+}
+
+// ---------------------------------------------------------------------------
+// Visits
+// ---------------------------------------------------------------------------
+
+export async function recordVisit(data: InsertVisit) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(visits).values(data);
+  return result.insertId;
+}
+
+/** True if this visitorId has been seen within the last `withinMs` window. */
+export async function hasVisitorSeenWithin(visitorId: string, withinMs: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const cutoff = new Date(Date.now() - withinMs);
+  const rows = await db
+    .select({ id: visits.id })
+    .from(visits)
+    .where(and(eq(visits.visitorId, visitorId), gt(visits.createdAt, cutoff)))
+    .limit(1);
+  return rows.length > 0;
+}
+
+export async function listRecentVisits(limit = 25) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(visits)
+    .orderBy(desc(visits.createdAt))
+    .limit(limit);
+}
+
+export async function countUniqueVisitorsSince(sinceMs: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const cutoff = new Date(Date.now() - sinceMs);
+  const rows = await db
+    .select({ visitorId: visits.visitorId })
+    .from(visits)
+    .where(gt(visits.createdAt, cutoff));
+  return new Set(rows.map(r => r.visitorId)).size;
 }

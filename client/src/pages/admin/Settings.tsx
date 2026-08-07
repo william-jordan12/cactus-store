@@ -25,6 +25,7 @@ export default function AdminSettings() {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [paymentsEnabled, setPaymentsEnabled] = useState(true);
+  const [visitorNotificationsEnabled, setVisitorNotificationsEnabled] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -32,6 +33,7 @@ export default function AdminSettings() {
       setWhatsappNumber(settings.whatsappNumber);
       setContactEmail(settings.contactEmail);
       setPaymentsEnabled(settings.onlinePaymentsEnabled);
+      setVisitorNotificationsEnabled(settings.visitorNotificationsEnabled);
     }
   }, [settings]);
 
@@ -41,6 +43,7 @@ export default function AdminSettings() {
       whatsappNumber: whatsappNumber.trim(),
       contactEmail: contactEmail.trim(),
       onlinePaymentsEnabled: paymentsEnabled,
+      visitorNotificationsEnabled,
     });
   };
 
@@ -121,6 +124,29 @@ export default function AdminSettings() {
                 </div>
               </div>
               <Switch checked={paymentsEnabled} onCheckedChange={setPaymentsEnabled} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Visitor Notifications</CardTitle>
+            <CardDescription>
+              Get notified when someone new visits your site. Each genuinely new visitor (not seen in 24h) triggers a
+              notification, throttled to one per 15 minutes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium text-sm">Notify me about new visitors</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {visitorNotificationsEnabled
+                    ? "You'll be notified when new visitors arrive."
+                    : "New visitors are tracked but no notification is sent."}
+                </div>
+              </div>
+              <Switch checked={visitorNotificationsEnabled} onCheckedChange={setVisitorNotificationsEnabled} />
             </div>
           </CardContent>
         </Card>

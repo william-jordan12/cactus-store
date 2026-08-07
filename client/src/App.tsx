@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import AdminGuard from "./components/AdminGuard";
 import CookieConsent from "./components/CookieConsent";
 import ErrorBoundary from "./components/ErrorBoundary";
+import VisitTracker from "./components/VisitTracker";
 import { CartProvider } from "./contexts/CartContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
@@ -120,6 +121,7 @@ function App() {
             <Toaster position="top-center" richColors />
             <Router />
             <CookieConsent />
+            <VisitTracker />
           </CartProvider>
         </TooltipProvider>
       </ThemeProvider>

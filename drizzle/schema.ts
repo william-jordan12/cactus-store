@@ -147,3 +147,16 @@ export const chatMessages = mysqlTable("chatMessages", {
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+/** Anonymous visit events used to notify the owner about new site traffic. */
+export const visits = mysqlTable("visits", {
+  id: int("id").autoincrement().primaryKey(),
+  visitorId: varchar("visitorId", { length: 64 }).notNull(),
+  path: varchar("path", { length: 500 }).notNull().default("/"),
+  userAgent: varchar("userAgent", { length: 500 }),
+  ip: varchar("ip", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Visit = typeof visits.$inferSelect;
+export type InsertVisit = typeof visits.$inferInsert;

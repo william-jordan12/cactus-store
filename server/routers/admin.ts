@@ -161,6 +161,7 @@ export const adminRouter = router({
         contactEmail: all.contactEmail || "peyoteseedsfarm@gmail.com",
         storeName: all.storeName ?? "Peyote Seeds Farm",
         onlinePaymentsEnabled: all.onlinePaymentsEnabled === "true",
+        visitorNotificationsEnabled: all.visitorNotificationsEnabled === "true",
       };
     }),
     update: adminProcedure
@@ -170,6 +171,7 @@ export const adminRouter = router({
           contactEmail: z.union([z.string().trim().email().max(320), z.literal("")]).optional(),
           storeName: z.string().trim().min(1).max(191).optional(),
           onlinePaymentsEnabled: z.boolean().optional(),
+          visitorNotificationsEnabled: z.boolean().optional(),
         }),
       )
       .mutation(async ({ input }) => {
@@ -185,7 +187,21 @@ export const adminRouter = router({
         if (input.onlinePaymentsEnabled !== undefined) {
           await db.setSetting("onlinePaymentsEnabled", input.onlinePaymentsEnabled ? "true" : "false");
         }
+        if (input.visitorNotificationsEnabled !== undefined) {
+          await db.setSetting("visitorNotificationsEnabled", input.visitorNotificationsEnabled ? "true" : "false");
+        }
         return { success: true };
       }),
+  }),
+
+  /** Visitor analytics */
+  visits: router({
+    recent: adminProcedure.query(async () => {
+      const [recent, unique24h] = await Promise.all([
+        db.listRecentVisits(25),
+        db.countUniqueVisitorsSince(24 * 60 * 60 * 1000),
+      ]);
+      return { recent, unique24h };
+    }),
   }),
 });

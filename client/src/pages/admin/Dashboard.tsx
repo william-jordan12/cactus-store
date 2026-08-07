@@ -2,13 +2,14 @@ import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/money";
 import { trpc } from "@/lib/trpc";
-import { Boxes, DollarSign, ShoppingBag, Tags } from "lucide-react";
+import { Boxes, DollarSign, Eye, ShoppingBag, Tags } from "lucide-react";
 import { Link } from "wouter";
 
 export default function AdminDashboard() {
   const { data: products } = trpc.admin.products.list.useQuery();
   const { data: categories } = trpc.admin.categories.list.useQuery();
   const { data: orders } = trpc.admin.orders.list.useQuery();
+  const { data: visits } = trpc.admin.visits.recent.useQuery();
 
   const paidOrders = orders?.filter(o => o.paymentStatus === "paid") ?? [];
   const revenueCents = paidOrders.reduce((sum, o) => sum + o.totalCents, 0);
@@ -19,6 +20,14 @@ export default function AdminDashboard() {
     { label: "Orders", value: orders?.length ?? "—", icon: ShoppingBag, href: "/admin/orders" },
     { label: "Paid Revenue", value: formatPrice(revenueCents), icon: DollarSign, href: "/admin/orders" },
   ];
+
+  const time = (d: string | Date) =>
+    new Date(d).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
 
   return (
     <AdminLayout title="Dashboard">
@@ -39,6 +48,47 @@ export default function AdminDashboard() {
             </Link>
           );
         })}
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
+        <Card>
+          <CardHeader className="px-3 md:px-6 pt-3 md:pt-6">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              Unique visitors (last 24h)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+            <div className="text-2xl font-black font-display">{visits?.unique24h ?? "—"}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Visitor notifications can be enabled under{" "}
+              <Link href="/admin/settings" className="text-primary underline">Settings</Link>.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="px-3 md:px-6 pt-3 md:pt-6">
+            <CardTitle className="text-base">Recent visits</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+            {!visits || visits.recent.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No visits recorded yet.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {visits.recent.slice(0, 8).map(v => (
+                  <li key={v.id} className="py-2 flex items-center justify-between gap-3 text-sm">
+                    <span className="text-muted-foreground font-mono text-xs truncate">
+                      {v.visitorId.slice(0, 8)}…
+                    </span>
+                    <span className="text-xs truncate flex-1 text-center">{v.path}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{time(v.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card>

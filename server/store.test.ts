@@ -18,10 +18,17 @@ vi.mock("./db", () => ({
   updateProduct: vi.fn(),
   deleteProduct: vi.fn(),
   setSetting: vi.fn(),
+  recordVisit: vi.fn(),
+  hasVisitorSeenWithin: vi.fn(),
 }));
 
 import { appRouter } from "./routers";
 import * as db from "./db";
+import { notifyOwner } from "./_core/notification";
+
+vi.mock("./_core/notification", () => ({
+  notifyOwner: vi.fn().mockResolvedValue(true),
+}));
 
 function publicCtx(): TrpcContext {
   return {
@@ -173,5 +180,43 @@ describe("store.createEmailPaymentRequest", () => {
     await expect(
       caller.store.createEmailPaymentRequest({ items: [{ productId: 1, quantity: 1 }] }),
     ).rejects.toThrow(/disabled/i);
+  });
+});
+
+describe("store.trackVisit", () => {
+  it("records the visit and notifies for a new visitor when enabled", async () => {
+    vi.mocked(db.getAllSettings).mockResolvedValue({
+      visitorNotificationsEnabled: "true",
+      lastVisitorNotifAt: "0",
+    });
+    vi.mocked(db.hasVisitorSeenWithin).mockResolvedValue(false);
+    vi.mocked(notifyOwner).mockResolvedValue(true);
+    const caller = appRouter.createCaller(publicCtx());
+    const result = await caller.store.trackVisit({ visitorId: "visitor-1", path: "/shop" });
+    expect(result.recorded).toBe(true);
+    expect(result.newVisitor).toBe(true);
+    expect(db.recordVisit).toHaveBeenCalledWith(
+      expect.objectContaining({ visitorId: "visitor-1", path: "/shop" }),
+    );
+    expect(notifyOwner).toHaveBeenCalled();
+    expect(db.setSetting).toHaveBeenCalledWith("lastVisitorNotifAt", expect.any(String));
+  });
+
+  it("does not notify for a returning visitor", async () => {
+    vi.mocked(db.getAllSettings).mockResolvedValue({ visitorNotificationsEnabled: "true" });
+    vi.mocked(db.hasVisitorSeenWithin).mockResolvedValue(true);
+    const caller = appRouter.createCaller(publicCtx());
+    const result = await caller.store.trackVisit({ visitorId: "visitor-1", path: "/" });
+    expect(result.recorded).toBe(true);
+    expect(result.newVisitor).toBe(false);
+    expect(notifyOwner).not.toHaveBeenCalled();
+  });
+
+  it("records the visit but skips notification when the setting is off", async () => {
+    vi.mocked(db.getAllSettings).mockResolvedValue({ visitorNotificationsEnabled: "false" });
+    const caller = appRouter.createCaller(publicCtx());
+    const result = await caller.store.trackVisit({ visitorId: "visitor-1", path: "/" });
+    expect(result.recorded).toBe(true);
+    expect(notifyOwner).not.toHaveBeenCalled();
   });
 });
