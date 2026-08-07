@@ -1,12 +1,12 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import AdminBar from "@/components/AdminBar";
-import SupportChat from "@/components/SupportChat";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { CartProvider } from "@/contexts/CartContext";
 import { useCart } from "@/contexts/CartContext";
 import { trpc } from "@/lib/trpc";
 import { Mail, Menu, Search, ShoppingCart, Sprout } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
@@ -286,8 +286,6 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
       </footer>
-
-      <SupportChat />
     </div>
   );
 }
