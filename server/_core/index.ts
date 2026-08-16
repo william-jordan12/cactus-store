@@ -111,17 +111,18 @@ async function startServer() {
       const cents = (s: string, m: number) => { const n = parseInt(s, 10); return m === 2 ? n : Math.round(n * Math.pow(10, m)); };
 
       const existingCats = await db.listCategories();
-      const existNames = new Set(existingCats.map(c => c.name));
       const catId = new Map<string, number>();
+      for (const c of existingCats) catId.set(c.name, c.id);
       for (const p of all) {
         for (const c of p.categories ?? []) {
           if (catId.has(c.name)) continue;
-          if (existNames.has(c.name)) {
-            const f = existingCats.find(x => x.name === c.name);
-            if (f) catId.set(c.name, f.id);
-          } else {
+          try {
             const id = await db.createCategory({ name: c.name });
             catId.set(c.name, id);
+          } catch {
+            const cats = await db.listCategories();
+            const f = cats.find(x => x.name === c.name);
+            if (f) catId.set(c.name, f.id);
           }
         }
       }
@@ -148,7 +149,7 @@ async function startServer() {
           priceCents, priceEndCents, inStock: p.is_in_stock ?? true,
           isVariable, variants, categoryId,
           description: strip(p.description || "") || null,
-        });
+        }).catch(() => {});
         created++;
       }
       res.json({ ok: true, products: created, categories: catId.size });
