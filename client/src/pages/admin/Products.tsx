@@ -36,6 +36,7 @@ import { GripVertical, ImageOff, Loader2, Pencil, Plus, Trash2, Upload, X } from
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
+import { uploadToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 
 interface VariantDraft {
   id: string;
@@ -167,28 +168,11 @@ export default function AdminProducts() {
     setDialogOpen(true);
   };
 
-  const compressImage = (file: File, maxDim = 600, quality = 0.65): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-          if (width > height) { height = Math.round((height / width) * maxDim); width = maxDim; }
-          else { width = Math.round((width / height) * maxDim); height = maxDim; }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Failed to load image")); };
-      img.src = url;
-    });
-
   const handleFiles = useCallback(async (files: FileList | File[]) => {
+    if (!isCloudinaryConfigured()) {
+      toast.error("Image uploads not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in Render.");
+      return;
+    }
     const newImages = [...form.images];
     setUploading(true);
     for (const file of Array.from(files)) {
@@ -201,10 +185,10 @@ export default function AdminProducts() {
         continue;
       }
       try {
-        const compressed = await compressImage(file);
-        newImages.push(compressed);
+        const url = await uploadToCloudinary(file);
+        newImages.push(url);
       } catch (e: any) {
-        toast.error(`Failed to process ${file.name}: ${e.message}`);
+        toast.error(`Failed to upload ${file.name}: ${e.message}`);
       }
     }
     setForm(f => ({ ...f, images: newImages }));
@@ -276,12 +260,16 @@ export default function AdminProducts() {
       toast.error(`${file.name} exceeds 10MB limit`);
       return;
     }
+    if (!isCloudinaryConfigured()) {
+      toast.error("Image uploads not configured.");
+      return;
+    }
     setVariantUploading(variantId);
     try {
-      const compressed = await compressImage(file, 600, 0.65);
-      updateVariant(variantId, "imageUrl", compressed);
+      const url = await uploadToCloudinary(file);
+      updateVariant(variantId, "imageUrl", url);
     } catch (e: any) {
-      toast.error(`Failed to process ${file.name}: ${e.message}`);
+      toast.error(`Failed to upload ${file.name}: ${e.message}`);
     }
     setVariantUploading(null);
   }, []);
