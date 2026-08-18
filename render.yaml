@@ -16,3 +16,7 @@ services:
         sync: false
       - key: PORT
         value: 10000
+      - key: VITE_CLOUDINARY_CLOUD_NAME
+        value: tmojnrbp
+      - key: VITE_CLOUDINARY_UPLOAD_PRESET
+        value: Cactus
