@@ -1,5 +1,5 @@
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "";
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "";
+const CLOUD_NAME = "tmojnrbp";
+const UPLOAD_PRESET = "Cactus";
 
 export function isCloudinaryConfigured(): boolean {
   return !!(CLOUD_NAME && UPLOAD_PRESET);
