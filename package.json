@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "node -e \"try{require('child_process').execSync('node '+require.resolve('esbuild/install.js'),{stdio:'inherit'})}catch(e){console.log('esbuild install skipped')};try{require('child_process').execSync('node '+require('path').join(require.resolve('@tailwindcss/oxide/package.json'),'..','scripts','install.js'),{stdio:'inherit'})}catch(e){console.log('oxide install skipped')}\" && vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
