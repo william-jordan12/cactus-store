@@ -33,6 +33,93 @@ export async function getDb() {
         ssl: { rejectUnauthorized: false },
       });
       _db = drizzle(conn);
+      // Auto-migrate: ensure core tables exist (recreate if DB was wiped)
+      try {
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            openId VARCHAR(64) NOT NULL UNIQUE,
+            name TEXT,
+            email VARCHAR(320),
+            loginMethod VARCHAR(64),
+            role ENUM('user','admin') NOT NULL DEFAULT 'user',
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
+            lastSignedIn TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+          )
+        `);
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS categories (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(191) NOT NULL UNIQUE,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+          )
+        `);
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS products (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            imageUrl MEDIUMTEXT,
+            images MEDIUMTEXT,
+            priceCents INT NOT NULL,
+            priceEndCents INT,
+            inStock BOOLEAN NOT NULL DEFAULT TRUE,
+            isVariable BOOLEAN NOT NULL DEFAULT FALSE,
+            variants MEDIUMTEXT,
+            categoryId INT,
+            description TEXT,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
+          )
+        `);
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS orders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            customerName VARCHAR(255),
+            customerEmail VARCHAR(320),
+            customerPhone VARCHAR(64),
+            shippingAddress TEXT,
+            billingAddress TEXT,
+            paymentMethod VARCHAR(64),
+            totalCents INT NOT NULL DEFAULT 0,
+            paymentStatus ENUM('pending','paid','failed') NOT NULL DEFAULT 'pending',
+            stripeSessionId VARCHAR(255) UNIQUE,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
+          )
+        `);
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS orderItems (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            orderId INT NOT NULL,
+            productId INT,
+            title VARCHAR(255) NOT NULL,
+            unitPriceCents INT NOT NULL,
+            quantity INT NOT NULL DEFAULT 1
+          )
+        `);
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            key VARCHAR(191) NOT NULL UNIQUE,
+            value TEXT,
+            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
+          )
+        `);
+        await conn.execute(`
+          CREATE TABLE IF NOT EXISTS reviews (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            authorName VARCHAR(191) NOT NULL,
+            rating INT NOT NULL DEFAULT 5,
+            content TEXT NOT NULL,
+            status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+          )
+        `);
+        console.log("[Database] Core tables verified");
+      } catch (e: any) {
+        console.warn("[Database] Core table migration:", e?.message);
+      }
       // Auto-migrate: add images column if missing, upgrade to MEDIUMTEXT if needed
       try {
         const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'images'");
