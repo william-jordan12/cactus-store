@@ -96,6 +96,47 @@ async function startServer() {
     })
   );
 
+  // Temporary: batch-update product images by category
+  app.post("/api/seed-images", async (_req, res) => {
+    try {
+      const dbConn = await (await import("mysql2/promise")).createConnection({
+        uri: process.env.DATABASE_URL!,
+        ssl: { rejectUnauthorized: false },
+      });
+
+      const catImages: Record<string, string> = {
+        Ariocarpus: "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=400&h=400&fit=crop",
+        Astrophytum: "https://images.unsplash.com/photo-1520178606913-118a6b3c31b1?w=400&h=400&fit=crop",
+        Lophophora: "https://images.unsplash.com/photo-1509423350716-97f9360b4e09?w=400&h=400&fit=crop",
+        Trichocereus: "https://images.unsplash.com/photo-1580752137660-17f9fd9d0c15?w=400&h=400&fit=crop",
+        Echinopsis: "https://images.unsplash.com/photo-1516481605912-d34c1411504c?w=400&h=400&fit=crop",
+        Mammillaria: "https://images.unsplash.com/photo-1589046212139-bf293b6eba18?w=400&h=400&fit=crop",
+        Ferocactus: "https://images.unsplash.com/photo-1537799261701-0cf2e54a840b?w=400&h=400&fit=crop",
+        Gymnocalycium: "https://images.unsplash.com/photo-1533066636271-fdbe3e84ad80?w=400&h=400&fit=crop",
+        Notocactus: "https://images.unsplash.com/photo-1510711547938-04fb9010e471?w=400&h=400&fit=crop",
+        Turbinicarpus: "https://images.unsplash.com/photo-1539571711714-62cd2534f96e?w=400&h=400&fit=crop",
+        Coryphantha: "https://images.unsplash.com/photo-1589046207215-b5ee3097bafc?w=400&h=400&fit=crop",
+        Escobaria: "https://images.unsplash.com/photo-1520178606913-118a6b3c31b1?w=400&h=400&fit=crop",
+        Pediocactus: "https://images.unsplash.com/photo-1516481605912-d34c1411504c?w=400&h=400&fit=crop",
+        Sulcorebutia: "https://images.unsplash.com/photo-1532295039064-229629db1073?w=400&h=400&fit=crop",
+      };
+
+      let updated = 0;
+      for (const [catName, imgUrl] of Object.entries(catImages)) {
+        const [result] = await dbConn.execute(
+          "UPDATE products p JOIN categories c ON p.categoryId = c.id SET p.imageUrl = ? WHERE c.name = ? AND (p.imageUrl IS NULL OR p.imageUrl = '')",
+          [imgUrl, catName]
+        );
+        updated += (result as any).affectedRows;
+      }
+      await dbConn.end();
+      res.json({ success: true, updated });
+    } catch (e: any) {
+      console.error("[SeedImages] Error:", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Dynamic sitemap including every product URL (registered before static files
   // so it takes precedence over the static sitemap.xml in the build output).
   app.get("/sitemap.xml", async (_req, res) => {

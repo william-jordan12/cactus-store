@@ -29,7 +29,7 @@ const productInput = z.object({
 export const adminRouter = router({
   /** Products CRUD */
   products: router({
-    list: adminProcedure.query(() => db.listProducts()),
+    list: adminProcedure.query(() => db.listProductsAdmin()),
     uploadImage: adminProcedure
       .input(z.object({ data: z.string().min(1), filename: z.string().min(1) }))
       .mutation(async ({ input }) => {

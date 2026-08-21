@@ -334,6 +334,25 @@ export async function listProducts() {
   return db.select().from(products).orderBy(desc(products.createdAt));
 }
 
+/** Lightweight product list for admin (excludes heavy images/variants columns). */
+export async function listProductsAdmin() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: products.id,
+    title: products.title,
+    imageUrl: products.imageUrl,
+    priceCents: products.priceCents,
+    priceEndCents: products.priceEndCents,
+    inStock: products.inStock,
+    isVariable: products.isVariable,
+    categoryId: products.categoryId,
+    description: products.description,
+    createdAt: products.createdAt,
+    updatedAt: products.updatedAt,
+  }).from(products).orderBy(desc(products.createdAt));
+}
+
 export async function getProductById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
