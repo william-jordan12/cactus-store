@@ -346,7 +346,25 @@ export async function deleteCategory(id: number) {
 export async function listProducts() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(products).orderBy(desc(products.createdAt));
+  // Select explicit columns, excluding the heavy `images` MEDIUMTEXT column,
+  // which made the public store.products query time out during serialization.
+  return db
+    .select({
+      id: products.id,
+      title: products.title,
+      imageUrl: products.imageUrl,
+      description: products.description,
+      priceCents: products.priceCents,
+      priceEndCents: products.priceEndCents,
+      inStock: products.inStock,
+      isVariable: products.isVariable,
+      variants: products.variants,
+      categoryId: products.categoryId,
+      createdAt: products.createdAt,
+      updatedAt: products.updatedAt,
+    })
+    .from(products)
+    .orderBy(desc(products.createdAt));
 }
 
 /** Lightweight product list for admin (excludes heavy images/variants columns). */
