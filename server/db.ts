@@ -222,6 +222,21 @@ export async function getDb() {
   return _db;
 }
 
+/** Returns a fresh raw mysql2 connection (used by bootstrap/seeding). */
+export async function getRawConnection() {
+  if (!process.env.DATABASE_URL) return null;
+  try {
+    const mysql = await import("mysql2/promise");
+    return await mysql.createConnection({
+      uri: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+  } catch (e) {
+    console.warn("[Database] getRawConnection failed:", e);
+    return null;
+  }
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");

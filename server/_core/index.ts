@@ -16,6 +16,7 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const";
 import { getSessionCookieOptions } from "./cookies";
 import { posts as blogPosts } from "../../client/src/lib/blogPosts";
 import { slugifyName } from "../../client/src/lib/slugify";
+import { bootstrapIfEmpty } from "../bootstrap";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -153,6 +154,15 @@ async function startServer() {
     await setupVite(app, server);
   } else {
     serveStatic(app);
+  }
+
+  // Seed default catalog if the DB is empty (Render free tier uses ephemeral storage)
+  if (process.env.NODE_ENV === "production") {
+    try {
+      await bootstrapIfEmpty();
+    } catch (e) {
+      console.error("[Bootstrap] Failed:", e);
+    }
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
