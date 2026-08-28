@@ -88,29 +88,6 @@ async function startServer() {
     }
   });
 
-  // TEMP: one-off purge of legacy (non-curated) products + orphaned categories.
-  // Keeps only products belonging to the curated category set.
-  app.post("/api/admin/purge-legacy", express.json(), async (req, res) => {
-    try {
-      const { password } = req.body;
-      if (password !== ENV.adminPassword) {
-        res.status(401).json({ error: "Invalid password" });
-        return;
-      }
-      const curated = [
-        "Ariocarpus", "Astrophytum", "Lophophora", "Trichocereus",
-        "Echinopsis", "Mammillaria", "Ferocactus", "Gymnocalycium",
-        "Notocactus", "Turbinicarpus", "Coryphantha", "Escobaria",
-        "Pediocactus", "Sulcorebutia",
-      ];
-      const deleted = await db.purgeLegacyProducts(curated);
-      res.json(deleted);
-    } catch (error) {
-      console.error("[Purge Legacy] Failed", error);
-      res.status(500).json({ error: (error as Error).message });
-    }
-  });
-
   // tRPC API
   app.use(
     "/api/trpc",
