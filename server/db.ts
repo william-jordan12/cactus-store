@@ -22,16 +22,44 @@ import {
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: any = null;
+
+/** Ping the pool until the DB responds, handling managed-DB sleep/wake cycles. */
+async function ensurePoolHealthy() {
+  if (!_pool) return;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const conn = await _pool.getConnection();
+      try {
+        await conn.ping();
+      } finally {
+        conn.release();
+      }
+      return;
+    } catch (e: any) {
+      console.warn(`[Database] Connection retry ${attempt + 1}:`, e?.message);
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       const mysql = await import("mysql2/promise");
-      const conn = await mysql.createConnection({
+      _pool = mysql.createPool({
         uri: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false },
+        connectionLimit: 5,
+        waitForConnections: true,
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 0,
+        connectTimeout: 30000,
       });
+      await ensurePoolHealthy();
+      const conn = _pool;
       _db = drizzle(conn);
       // Auto-migrate: ensure core tables exist (recreate if DB was wiped)
       try {
@@ -222,15 +250,21 @@ export async function getDb() {
   return _db;
 }
 
-/** Returns a fresh raw mysql2 connection (used by bootstrap/seeding). */
+/** Returns a raw mysql2 connection from the shared pool (used by bootstrap/seeding). */
 export async function getRawConnection() {
   if (!process.env.DATABASE_URL) return null;
   try {
+    await ensurePoolHealthy();
+    if (_pool) return await _pool.getConnection();
     const mysql = await import("mysql2/promise");
-    return await mysql.createConnection({
+    const pool = mysql.createPool({
       uri: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
+      connectionLimit: 3,
+      connectTimeout: 30000,
     });
+    _pool = pool;
+    return await pool.getConnection();
   } catch (e) {
     console.warn("[Database] getRawConnection failed:", e);
     return null;
