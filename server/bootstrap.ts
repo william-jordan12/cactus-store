@@ -15,8 +15,8 @@ export async function bootstrapIfEmpty() {
 
   try {
     // If products already exist, nothing to do.
-    const [countRows] = await conn.execute("SELECT COUNT(*) AS c FROM products");
-    const count = (countRows as any[])[0]?.c ?? 0;
+    const countRes = await conn.query("SELECT COUNT(*) AS c FROM products");
+    const count = Number(countRes.rows[0]?.c ?? 0);
     if (count > 0) {
       console.log(`[Bootstrap] Products already present (${count}), skipping seed.`);
       return;
@@ -122,12 +122,12 @@ export async function bootstrapIfEmpty() {
     const catIdMap: Record<string, number> = {};
     for (const name of categories) {
       const img = catImages[name] ?? null;
-      const [existing] = await conn.execute("SELECT id FROM categories WHERE name = ?", [name]);
-      if ((existing as any[]).length > 0) {
-        catIdMap[name] = (existing as any[])[0].id;
+      const existing = await conn.query("SELECT id FROM categories WHERE name = $1", [name]);
+      if (existing.rows.length > 0) {
+        catIdMap[name] = Number(existing.rows[0].id);
       } else {
-        const [result] = await conn.execute("INSERT INTO categories (name) VALUES (?)", [name]);
-        catIdMap[name] = (result as any).insertId;
+        const ins = await conn.query("INSERT INTO categories (name) VALUES ($1) RETURNING id", [name]);
+        catIdMap[name] = Number(ins.rows[0].id);
       }
     }
 
@@ -135,8 +135,8 @@ export async function bootstrapIfEmpty() {
     for (const p of products) {
       const catId = catIdMap[p.cat] ?? null;
       const img = catImages[p.cat] ?? null;
-      await conn.execute(
-        "INSERT INTO products (title, imageUrl, priceCents, categoryId, description, inStock, isVariable) VALUES (?, ?, ?, ?, ?, 1, 0)",
+      await conn.query(
+        "INSERT INTO products (title, imageUrl, priceCents, categoryId, description, inStock, isVariable) VALUES ($1, $2, $3, $4, $5, TRUE, FALSE)",
         [p.title, img, p.priceCents, catId, p.desc]
       );
     }
@@ -150,8 +150,8 @@ export async function bootstrapIfEmpty() {
       { authorName: "Carlos P.", rating: 5, content: "Finally found a reliable source for Ariocarpus seeds online. The quality is outstanding and the prices are fair. Discreet worldwide shipping as promised." },
     ];
     for (const r of reviews) {
-      await conn.execute(
-        "INSERT INTO reviews (authorName, rating, content, status) VALUES (?, ?, ?, 'approved')",
+      await conn.query(
+        "INSERT INTO reviews (authorName, rating, content, status) VALUES ($1, $2, $3, 'approved')",
         [r.authorName, r.rating, r.content]
       );
     }
@@ -160,6 +160,6 @@ export async function bootstrapIfEmpty() {
   } catch (e: any) {
     console.error("[Bootstrap] Seeding failed:", e?.message);
   } finally {
-    try { await conn.end(); } catch {}
+    try { await conn.release(); } catch {}
   }
 }

@@ -1,5 +1,5 @@
 import { and, desc, eq, gt, or } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
 import {
   categories,
   chatMessages,
@@ -39,18 +39,11 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 async function ensurePoolHealthy() {
   if (!_pool) return;
   for (let attempt = 0; attempt < 5; attempt++) {
-    let conn: any;
     try {
-      conn = await withTimeout(_pool.getConnection(), 25000);
-      try {
-        await withTimeout(conn.ping(), 25000);
-      } finally {
-        conn.release();
-      }
+      await withTimeout(_pool.query("SELECT 1"), 25000);
       return;
     } catch (e: any) {
       console.warn(`[Database] Connection retry ${attempt + 1}:`, e?.message);
-      try { conn?.release(); } catch {}
       await new Promise(r => setTimeout(r, 2000));
     }
   }
@@ -60,178 +53,177 @@ async function ensurePoolHealthy() {
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      const mysql = await import("mysql2/promise");
-      _pool = mysql.createPool({
-        uri: process.env.DATABASE_URL,
+      const { Pool } = await import("pg");
+      _pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false },
-        connectionLimit: 5,
-        waitForConnections: true,
-        queueLimit: 0,
-        enableKeepAlive: true,
-        keepAliveInitialDelay: 0,
-        connectTimeout: 30000,
-        queryTimeout: 30000,
+        max: 5,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 30000,
+        query_timeout: 30000,
+        keepAlive: true,
       });
       await ensurePoolHealthy();
       const conn = _pool;
-      _db = drizzle(conn);
+      _db = drizzle(conn, { schema: undefined });
       // Auto-migrate: ensure core tables exist (recreate if DB was wiped)
       try {
-        await conn.execute(`
+        await conn.query(`
           CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            openId VARCHAR(64) NOT NULL UNIQUE,
+            id SERIAL PRIMARY KEY,
+            "openId" VARCHAR(64) NOT NULL UNIQUE,
             name TEXT,
             email VARCHAR(320),
-            loginMethod VARCHAR(64),
-            role ENUM('user','admin') NOT NULL DEFAULT 'user',
-            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
-            lastSignedIn TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+            "loginMethod" VARCHAR(64),
+            role TEXT NOT NULL DEFAULT 'user',
+            "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            "lastSignedIn" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
         `);
-        await conn.execute(`
+        await conn.query(`
           CREATE TABLE IF NOT EXISTS categories (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             name VARCHAR(191) NOT NULL UNIQUE,
-            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+            "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
         `);
-        await conn.execute(`
+        await conn.query(`
           CREATE TABLE IF NOT EXISTS products (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
-            imageUrl MEDIUMTEXT,
-            images MEDIUMTEXT,
-            priceCents INT NOT NULL,
-            priceEndCents INT,
-            inStock BOOLEAN NOT NULL DEFAULT TRUE,
-            isVariable BOOLEAN NOT NULL DEFAULT FALSE,
-            variants MEDIUMTEXT,
-            categoryId INT,
+            "imageUrl" TEXT,
+            images TEXT,
+            "priceCents" INT NOT NULL,
+            "priceEndCents" INT,
+            "inStock" BOOLEAN NOT NULL DEFAULT TRUE,
+            "isVariable" BOOLEAN NOT NULL DEFAULT FALSE,
+            variants TEXT,
+            "categoryId" INT,
             description TEXT,
-            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
+            "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
         `);
-        await conn.execute(`
+        await conn.query(`
           CREATE TABLE IF NOT EXISTS orders (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            customerName VARCHAR(255),
-            customerEmail VARCHAR(320),
-            customerPhone VARCHAR(64),
-            shippingAddress TEXT,
-            billingAddress TEXT,
-            paymentMethod VARCHAR(64),
-            totalCents INT NOT NULL DEFAULT 0,
-            paymentStatus ENUM('pending','paid','failed') NOT NULL DEFAULT 'pending',
-            stripeSessionId VARCHAR(255) UNIQUE,
-            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
+            id SERIAL PRIMARY KEY,
+            "customerName" VARCHAR(255),
+            "customerEmail" VARCHAR(320),
+            "customerPhone" VARCHAR(64),
+            "shippingAddress" TEXT,
+            "billingAddress" TEXT,
+            "paymentMethod" VARCHAR(64),
+            "totalCents" INT NOT NULL DEFAULT 0,
+            "paymentStatus" TEXT NOT NULL DEFAULT 'pending',
+            "stripeSessionId" VARCHAR(255) UNIQUE,
+            "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
         `);
-        await conn.execute(`
+        await conn.query(`
           CREATE TABLE IF NOT EXISTS orderItems (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            orderId INT NOT NULL,
-            productId INT,
+            id SERIAL PRIMARY KEY,
+            "orderId" INT NOT NULL,
+            "productId" INT,
             title VARCHAR(255) NOT NULL,
-            unitPriceCents INT NOT NULL,
+            "unitPriceCents" INT NOT NULL,
             quantity INT NOT NULL DEFAULT 1
           )
         `);
-        await conn.execute(`
+        await conn.query(`
           CREATE TABLE IF NOT EXISTS settings (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             key VARCHAR(191) NOT NULL UNIQUE,
             value TEXT,
-            updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
+            "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
         `);
-        await conn.execute(`
+        await conn.query(`
           CREATE TABLE IF NOT EXISTS reviews (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            authorName VARCHAR(191) NOT NULL,
+            id SERIAL PRIMARY KEY,
+            "authorName" VARCHAR(191) NOT NULL,
             rating INT NOT NULL DEFAULT 5,
             content TEXT NOT NULL,
-            status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+            status TEXT NOT NULL DEFAULT 'pending',
+            "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
         `);
         console.log("[Database] Core tables verified");
       } catch (e: any) {
         console.warn("[Database] Core table migration:", e?.message);
       }
-      // Auto-migrate: add images column if missing, upgrade to MEDIUMTEXT if needed
+      // Auto-migrate: add images column if missing (upgrade to text)
       try {
-        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'images'");
-        if ((cols as any[]).length === 0) {
-          await conn.execute("ALTER TABLE products ADD COLUMN `images` MEDIUMTEXT AFTER `imageUrl`");
+        const cols = await conn.query(
+          `SELECT column_name FROM information_schema.columns WHERE table_name='products' AND column_name='images'`
+        );
+        if (cols.rows.length === 0) {
+          await conn.query(`ALTER TABLE products ADD COLUMN images TEXT`);
           console.log("[Database] Added 'images' column to products table");
-        } else {
-          const [colType] = await conn.execute("SHOW COLUMNS FROM products WHERE Field='images'");
-          const type = (colType as any[])[0]?.Type?.toLowerCase() ?? "";
-          if (type === "text") {
-            await conn.execute("ALTER TABLE products MODIFY COLUMN `images` MEDIUMTEXT");
-            console.log("[Database] Upgraded 'images' column to MEDIUMTEXT");
-          }
         }
-        const [urlCol] = await conn.execute("SHOW COLUMNS FROM products WHERE Field='imageUrl'");
-        const urlType = (urlCol as any[])[0]?.Type?.toLowerCase() ?? "";
+        const urlCol = await conn.query(
+          `SELECT data_type FROM information_schema.columns WHERE table_name='products' AND column_name='imageUrl'`
+        );
+        const urlType = (urlCol.rows[0]?.data_type ?? "").toLowerCase();
         if (urlType === "text") {
-          await conn.execute("ALTER TABLE products MODIFY COLUMN `imageUrl` MEDIUMTEXT");
-          console.log("[Database] Upgraded 'imageUrl' column to MEDIUMTEXT");
+          await conn.query(`ALTER TABLE products ALTER COLUMN "imageUrl" TYPE TEXT`);
+          console.log("[Database] Upgraded 'imageUrl' column to TEXT");
         }
       } catch (e: any) {
         console.warn("[Database] images column migration:", e?.message);
       }
       // Auto-migrate: create chatMessages table if missing
       try {
-        await conn.execute(`
+        await conn.query(`
           CREATE TABLE IF NOT EXISTS chatMessages (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            conversationId VARCHAR(64) NOT NULL,
-            sender ENUM('customer','admin','bot') NOT NULL,
+            id SERIAL PRIMARY KEY,
+            "conversationId" VARCHAR(64) NOT NULL,
+            sender TEXT NOT NULL,
             text TEXT NOT NULL,
-            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            INDEX idx_chat_conv (conversationId),
-            INDEX idx_chat_created (createdAt)
+            "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
         `);
+        await conn.query(`CREATE INDEX IF NOT EXISTS idx_chat_conv ON chatMessages ("conversationId")`);
+        await conn.query(`CREATE INDEX IF NOT EXISTS idx_chat_created ON chatMessages ("createdAt")`);
       } catch (e: any) {
         console.warn("[Database] chatMessages migration:", e?.message);
       }
       // Auto-migrate: create visits table if missing
       try {
-        await conn.execute(`
+        await conn.query(`
           CREATE TABLE IF NOT EXISTS visits (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            visitorId VARCHAR(64) NOT NULL,
+            id SERIAL PRIMARY KEY,
+            "visitorId" VARCHAR(64) NOT NULL,
             path VARCHAR(500) NOT NULL DEFAULT '/',
-            userAgent VARCHAR(500) NULL,
+            "userAgent" VARCHAR(500) NULL,
             ip VARCHAR(64) NULL,
-            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            INDEX idx_visits_visitor (visitorId),
-            INDEX idx_visits_created (createdAt)
+            "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
         `);
+        await conn.query(`CREATE INDEX IF NOT EXISTS idx_visits_visitor ON visits ("visitorId")`);
+        await conn.query(`CREATE INDEX IF NOT EXISTS idx_visits_created ON visits ("createdAt")`);
       } catch (e: any) {
         console.warn("[Database] visits migration:", e?.message);
       }
       // Auto-migrate: add priceEndCents and inStock columns if missing
       try {
-        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'priceEndCents'");
-        if ((cols as any[]).length === 0) {
-          await conn.execute("ALTER TABLE products ADD COLUMN `priceEndCents` INT NULL AFTER `priceCents`");
+        const col1 = await conn.query(
+          `SELECT column_name FROM information_schema.columns WHERE table_name='products' AND column_name='priceEndCents'`
+        );
+        if (col1.rows.length === 0) {
+          await conn.query(`ALTER TABLE products ADD COLUMN "priceEndCents" INT NULL`);
           console.log("[Database] Added 'priceEndCents' column to products table");
         }
       } catch (e: any) {
         console.warn("[Database] priceEndCents migration:", e?.message);
       }
       try {
-        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'inStock'");
-        if ((cols as any[]).length === 0) {
-          await conn.execute("ALTER TABLE products ADD COLUMN `inStock` BOOLEAN NOT NULL DEFAULT TRUE AFTER `priceEndCents`");
+        const col2 = await conn.query(
+          `SELECT column_name FROM information_schema.columns WHERE table_name='products' AND column_name='inStock'`
+        );
+        if (col2.rows.length === 0) {
+          await conn.query(`ALTER TABLE products ADD COLUMN "inStock" BOOLEAN NOT NULL DEFAULT TRUE`);
           console.log("[Database] Added 'inStock' column to products table");
         }
       } catch (e: any) {
@@ -239,18 +231,22 @@ export async function getDb() {
       }
       // Auto-migrate: add isVariable and variants columns if missing
       try {
-        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'isVariable'");
-        if ((cols as any[]).length === 0) {
-          await conn.execute("ALTER TABLE products ADD COLUMN `isVariable` BOOLEAN NOT NULL DEFAULT FALSE AFTER `inStock`");
+        const col3 = await conn.query(
+          `SELECT column_name FROM information_schema.columns WHERE table_name='products' AND column_name='isVariable'`
+        );
+        if (col3.rows.length === 0) {
+          await conn.query(`ALTER TABLE products ADD COLUMN "isVariable" BOOLEAN NOT NULL DEFAULT FALSE`);
           console.log("[Database] Added 'isVariable' column to products table");
         }
       } catch (e: any) {
         console.warn("[Database] isVariable migration:", e?.message);
       }
       try {
-        const [cols] = await conn.execute("SHOW COLUMNS FROM products LIKE 'variants'");
-        if ((cols as any[]).length === 0) {
-          await conn.execute("ALTER TABLE products ADD COLUMN `variants` MEDIUMTEXT NULL AFTER `isVariable`");
+        const col4 = await conn.query(
+          `SELECT column_name FROM information_schema.columns WHERE table_name='products' AND column_name='variants'`
+        );
+        if (col4.rows.length === 0) {
+          await conn.query(`ALTER TABLE products ADD COLUMN variants TEXT NULL`);
           console.log("[Database] Added 'variants' column to products table");
         }
       } catch (e: any) {
@@ -264,22 +260,22 @@ export async function getDb() {
   return _db;
 }
 
-/** Returns a raw mysql2 connection from the shared pool (used by bootstrap/seeding). */
+/** Returns a raw pg client from the shared pool (used by bootstrap/seeding). */
 export async function getRawConnection() {
   if (!process.env.DATABASE_URL) return null;
   try {
     await ensurePoolHealthy();
-    if (_pool) return await withTimeout(_pool.getConnection(), 25000);
-    const mysql = await import("mysql2/promise");
-    const pool = mysql.createPool({
-      uri: process.env.DATABASE_URL,
+    if (_pool) return await withTimeout(_pool.connect(), 25000);
+    const { Pool } = await import("pg");
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
-      connectionLimit: 3,
-      connectTimeout: 30000,
-      queryTimeout: 30000,
+      max: 3,
+      connectionTimeoutMillis: 30000,
+      query_timeout: 30000,
     });
     _pool = pool;
-    return await withTimeout(pool.getConnection(), 25000);
+    return await withTimeout(pool.connect(), 25000);
   } catch (e) {
     console.warn("[Database] getRawConnection failed:", e);
     return null;
@@ -336,7 +332,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -370,8 +367,8 @@ export async function listCategories() {
 export async function createCategory(data: InsertCategory) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(categories).values(data);
-  return result.insertId;
+  const rows = await db.insert(categories).values(data).returning({ id: categories.id });
+  return rows[0].id;
 }
 
 export async function updateCategory(id: number, name: string) {
@@ -446,13 +443,13 @@ export async function createProduct(data: InsertProduct) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   try {
-    const [result] = await db.insert(products).values(data);
-    return result.insertId;
+    const rows = await db.insert(products).values(data).returning({ id: products.id });
+    return rows[0].id;
   } catch (e: any) {
-    if (e?.code === "ER_BAD_FIELD_ERROR" && "images" in data) {
+    if (e && (e.code === "ER_BAD_FIELD_ERROR" || e.code === "42703") && "images" in data) {
       const { images, ...rest } = data;
-      const [result] = await db.insert(products).values(rest as any);
-      return result.insertId;
+      const rows = await db.insert(products).values(rest as any).returning({ id: products.id });
+      return rows[0].id;
     }
     throw e;
   }
@@ -464,7 +461,7 @@ export async function updateProduct(id: number, data: Partial<InsertProduct>) {
   try {
     await db.update(products).set(data).where(eq(products.id, id));
   } catch (e: any) {
-    if (e?.code === "ER_BAD_FIELD_ERROR" && "images" in data) {
+    if (e && (e.code === "ER_BAD_FIELD_ERROR" || e.code === "42703") && "images" in data) {
       const { images, ...rest } = data;
       await db.update(products).set(rest as any).where(eq(products.id, id));
     } else {
@@ -486,8 +483,8 @@ export async function deleteProduct(id: number) {
 export async function createOrder(order: InsertOrder, items: Omit<InsertOrderItem, "orderId">[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(orders).values(order);
-  const orderId = result.insertId;
+  const rows = await db.insert(orders).values(order).returning({ id: orders.id });
+  const orderId = rows[0].id;
   if (items.length > 0) {
     await db.insert(orderItems).values(items.map(item => ({ ...item, orderId })));
   }
@@ -549,7 +546,7 @@ export async function setSetting(key: string, value: string) {
   await db
     .insert(settings)
     .values({ key, value })
-    .onDuplicateKeyUpdate({ set: { value } });
+    .onConflictDoUpdate({ target: settings.key, set: { value } });
 }
 
 // ---------------------------------------------------------------------------
@@ -559,8 +556,8 @@ export async function setSetting(key: string, value: string) {
 export async function createReview(data: InsertReview) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(reviews).values(data);
-  return result.insertId;
+  const rows = await db.insert(reviews).values(data).returning({ id: reviews.id });
+  return rows[0].id;
 }
 
 export async function listApprovedReviews() {
@@ -600,8 +597,8 @@ export async function deleteChatConversation(conversationId: string) {
 export async function sendChatMessage(data: InsertChatMessage) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(chatMessages).values(data);
-  return result.insertId;
+  const rows = await db.insert(chatMessages).values(data).returning({ id: chatMessages.id });
+  return rows[0].id;
 }
 
 export async function getChatMessages(conversationId: string, afterId?: number) {
@@ -621,17 +618,18 @@ export async function getChatMessages(conversationId: string, afterId?: number) 
 export async function listChatConversations() {
   const db = await getDb();
   if (!db) return [];
+  if (!_pool) return [];
 
   // Get the most recent message per conversation using a subquery approach
-  const latestPerConv = await db.execute(`
-    SELECT conversationId, MAX(id) as maxId
-    FROM chatMessages
-    GROUP BY conversationId
-    ORDER BY maxId DESC
+  const latestPerConv = await _pool.query(`
+    SELECT "conversationId", MAX(id) as "maxId"
+    FROM "chatMessages"
+    GROUP BY "conversationId"
+    ORDER BY "maxId" DESC
     LIMIT 50
   `);
 
-  const convIds = (latestPerConv as any[]).map((r: any) => r.maxId);
+  const convIds = (latestPerConv.rows as any[]).map((r: any) => r.maxId);
   if (convIds.length === 0) return [];
 
   const latestMessages = await db
@@ -640,27 +638,27 @@ export async function listChatConversations() {
     .where(or(...convIds.map((id: number) => eq(chatMessages.id, id))));
 
   // Count unread customer messages per conversation
-  const unreadRows = await db.execute(`
-    SELECT conversationId, COUNT(*) as cnt
-    FROM chatMessages
+  const unreadRows = await _pool.query(`
+    SELECT "conversationId", COUNT(*) as cnt
+    FROM "chatMessages"
     WHERE sender = 'customer'
       AND id > (
         SELECT COALESCE(MAX(id), 0)
-        FROM chatMessages
+        FROM "chatMessages"
         WHERE sender IN ('admin', 'bot')
-          AND conversationId = chatMessages.conversationId
+          AND "conversationId" = "chatMessages"."conversationId"
       )
-    GROUP BY conversationId
+    GROUP BY "conversationId"
   `);
 
   const unreadMap = new Map<string, number>();
-  for (const row of unreadRows as any[]) {
+  for (const row of unreadRows.rows as any[]) {
     unreadMap.set(row.conversationId, Number(row.cnt));
   }
 
   const msgMap = new Map(latestMessages.map(m => [m.id, m]));
 
-  return (latestPerConv as any[])
+  return (latestPerConv.rows as any[])
     .map((row: any) => {
       const msg = msgMap.get(row.maxId);
       if (!msg) return null;
@@ -683,8 +681,8 @@ export async function listChatConversations() {
 export async function recordVisit(data: InsertVisit) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(visits).values(data);
-  return result.insertId;
+  const rows = await db.insert(visits).values(data).returning({ id: visits.id });
+  return rows[0].id;
 }
 
 /** True if this visitorId has been seen within the last `withinMs` window. */
