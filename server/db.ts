@@ -24,21 +24,34 @@ import { ENV } from './_core/env';
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: any = null;
 
+/** Race a promise against a timeout so a sleeping managed DB can't block us. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`DB operation timed out after ${ms}ms`)), ms);
+    p.then(
+      v => { clearTimeout(t); resolve(v); },
+      e => { clearTimeout(t); reject(e); }
+    );
+  });
+}
+
 /** Ping the pool until the DB responds, handling managed-DB sleep/wake cycles. */
 async function ensurePoolHealthy() {
   if (!_pool) return;
   for (let attempt = 0; attempt < 5; attempt++) {
+    let conn: any;
     try {
-      const conn = await _pool.getConnection();
+      conn = await withTimeout(_pool.getConnection(), 25000);
       try {
-        await conn.ping();
+        await withTimeout(conn.ping(), 25000);
       } finally {
         conn.release();
       }
       return;
     } catch (e: any) {
       console.warn(`[Database] Connection retry ${attempt + 1}:`, e?.message);
-      await new Promise(r => setTimeout(r, 1500));
+      try { conn?.release(); } catch {}
+      await new Promise(r => setTimeout(r, 2000));
     }
   }
 }
@@ -57,6 +70,7 @@ export async function getDb() {
         enableKeepAlive: true,
         keepAliveInitialDelay: 0,
         connectTimeout: 30000,
+        queryTimeout: 30000,
       });
       await ensurePoolHealthy();
       const conn = _pool;
@@ -255,16 +269,17 @@ export async function getRawConnection() {
   if (!process.env.DATABASE_URL) return null;
   try {
     await ensurePoolHealthy();
-    if (_pool) return await _pool.getConnection();
+    if (_pool) return await withTimeout(_pool.getConnection(), 25000);
     const mysql = await import("mysql2/promise");
     const pool = mysql.createPool({
       uri: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
       connectionLimit: 3,
       connectTimeout: 30000,
+      queryTimeout: 30000,
     });
     _pool = pool;
-    return await pool.getConnection();
+    return await withTimeout(pool.getConnection(), 25000);
   } catch (e) {
     console.warn("[Database] getRawConnection failed:", e);
     return null;

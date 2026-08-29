@@ -156,13 +156,10 @@ async function startServer() {
     serveStatic(app);
   }
 
-  // Seed default catalog if the DB is empty (Render free tier uses ephemeral storage)
+  // Seed default catalog if the DB is empty. Run non-blocking so a slow/waking
+  // managed DB never blocks the server from starting (avoid stuck health checks).
   if (process.env.NODE_ENV === "production") {
-    try {
-      await bootstrapIfEmpty();
-    } catch (e) {
-      console.error("[Bootstrap] Failed:", e);
-    }
+    bootstrapIfEmpty().catch(e => console.error("[Bootstrap] Failed:", e));
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
