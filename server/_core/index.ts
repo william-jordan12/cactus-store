@@ -37,9 +37,13 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-async function startServer() {
+/**
+ * Builds the fully-configured Express application (routers, middleware, static).
+ * Used by both the long-running server (Render/local) and the Vercel serverless
+ * runtime, so the app behavior stays identical across hosts.
+ */
+export async function createApp() {
   const app = express();
-  const server = createServer(app);
   // Stripe webhook needs the raw body — register BEFORE express.json()
   registerStripeWebhook(app);
   // Configure body parser with larger size limit for file uploads
@@ -149,17 +153,28 @@ async function startServer() {
     }
   });
 
-  // development mode uses Vite, production mode uses static files
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
+  // In production, serve the built static files (SPA + assets).
+  if (process.env.NODE_ENV !== "development") {
     serveStatic(app);
   }
 
   // Seed default catalog if the DB is empty. Run non-blocking so a slow/waking
   // managed DB never blocks the server from starting (avoid stuck health checks).
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
     bootstrapIfEmpty().catch(e => console.error("[Bootstrap] Failed:", e));
+  }
+
+  return app;
+}
+
+/** Long-running server entry (Render / local dev). Not used on Vercel. */
+async function startServer() {
+  const app = await createApp();
+  const server = createServer(app);
+
+  // Local development only: attach Vite HMR middleware.
+  if (process.env.NODE_ENV === "development") {
+    await setupVite(app, server);
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
@@ -174,4 +189,11 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+// Only auto-start when running directly (not when imported as a module,
+// e.g. not when Vercel imports `createApp` from this file).
+if (process.argv[1] && import.meta.url === process.argv[1]) {
+  startServer().catch(console.error);
+}
+
+// Default export so Vercel/@vercel/node can treat this file's app as the handler.
+export default createApp;
