@@ -136,7 +136,7 @@ export async function bootstrapIfEmpty() {
       const catId = catIdMap[p.cat] ?? null;
       const img = catImages[p.cat] ?? null;
       await conn.query(
-        "INSERT INTO products (title, imageUrl, priceCents, categoryId, description, inStock, isVariable) VALUES ($1, $2, $3, $4, $5, TRUE, FALSE)",
+        "INSERT INTO products (title, \"imageUrl\", \"priceCents\", \"categoryId\", description, \"inStock\", \"isVariable\") VALUES ($1, $2, $3, $4, $5, TRUE, FALSE)",
         [p.title, img, p.priceCents, catId, p.desc]
       );
     }
@@ -151,7 +151,7 @@ export async function bootstrapIfEmpty() {
     ];
     for (const r of reviews) {
       await conn.query(
-        "INSERT INTO reviews (authorName, rating, content, status) VALUES ($1, $2, $3, 'approved')",
+        "INSERT INTO reviews (\"authorName\", rating, content, status) VALUES ($1, $2, $3, 'approved')",
         [r.authorName, r.rating, r.content]
       );
     }
