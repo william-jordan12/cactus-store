@@ -15,7 +15,8 @@ const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false },
   max: 3,
-  connectionTimeoutMillis: 15000,
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 10000,
 });
 
 // Create tables if they don't exist (idempotent).
@@ -58,11 +59,28 @@ app.get("/api/products", async (_req, res) => {
       pool.query(
         "SELECT id, title, image_url, price_cents, category, description, in_stock FROM products ORDER BY id"
       ),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error("db timeout")), 20000)),
+      new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error("db timeout")), 20000)
+      ),
     ]);
     res.json({ products: rows });
   } catch (e: any) {
-    res.status(500).json({ error: "db: " + (e && e.message) });
+    res.status(500).json({ error: "products: " + (e && e.message) });
+  }
+});
+
+// DB connectivity check (diagnostic)
+app.get("/api/dbcheck", async (_req, res) => {
+  try {
+    const { rows } = await Promise.race([
+      pool.query("SELECT 1 as ok"),
+      new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error("dbcheck timeout")), 8000)
+      ),
+    ]);
+    res.json({ ok: true, version: rows });
+  } catch (e: any) {
+    res.json({ ok: false, error: (e && e.message) || String(e) });
   }
 });
 
