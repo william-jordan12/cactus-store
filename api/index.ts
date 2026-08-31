@@ -1,31 +1,28 @@
-import { createApp } from "../server/_core/index";
-
-/**
- * Vercel serverless entry point.
- *
- * Import the server source directly and run the Express app as a (req, res)
- * handler. Vercel's @vercel/node compiles TypeScript and installs node_modules,
- * so this needs no manual bundling. The app is created lazily and cached.
- */
-let appPromise: ReturnType<typeof createApp> | null = null;
-
 export default async function handler(req: any, res: any) {
-  if ((req.url || "").startsWith("/probe")) {
-    res.status(200).send("PROBE OK " + new Date().toISOString());
+  const url = req.url || "";
+  res.status(200).set("Content-Type", "text/plain");
+
+  async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+      p,
+      new Promise<T>((_, rej) => setTimeout(() => rej(new Error(label + " timed out " + ms + "ms")), ms)),
+    ]);
+  }
+
+  // /step: import the server module with a hard timeout, report what happens.
+  if (url.startsWith("/step")) {
+    try {
+      const mod: any = await withTimeout(
+        import("../server/_core/index"),
+        15000,
+        "IMPORT"
+      );
+      res.end("module loaded, has createApp=" + typeof mod.createApp + ", default=" + typeof mod.default);
+    } catch (e: any) {
+      res.end("STEP FAIL: " + (e && e.stack ? e.stack : String(e)));
+    }
     return;
   }
-  if (!appPromise) {
-    appPromise = createApp();
-  }
-  const app = await appPromise;
-  try {
-    app(req, res);
-  } catch (err) {
-    const msg = err instanceof Error ? (err.stack || err.message) : String(err);
-    try {
-      res.status(500).send("APP ERR: " + msg);
-    } catch {
-      res.status(500).end();
-    }
-  }
+
+  res.end("PROBE OK " + new Date().toISOString());
 }
