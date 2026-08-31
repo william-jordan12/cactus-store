@@ -1,23 +1,16 @@
 import express from "express";
-import { createRequire } from "module";
 import path from "path";
 import fs from "fs";
-
-const require = createRequire(import.meta.url);
-const { Pool } = require("pg");
+import { Pool } from "@neondatabase/serverless";
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||
-  "postgresql://willy:YceDea3OfYk4Uv4YacGwmA@trusty-sponge-32885.j77.aws-eu-central-1.cockroachlabs.cloud:26257/defaultdb";
+  "postgresql://neondb_owner:npg_TNbgGSj9C1Aq@ep-gentle-queen-axr5xctq-pooler.c-4.us-east-2.aws.neon.tech/neondb";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "william.40";
 
-const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  max: 3,
-  connectionTimeoutMillis: 5000,
-  idleTimeoutMillis: 10000,
-});
+// Neon serverless driver: designed to work inside Vercel's serverless runtime.
+// It handles SSL and connection pooling for serverless natively.
+const pool = new Pool({ connectionString: DATABASE_URL });
 
 // Create tables if they don't exist (idempotent).
 async function ensureTables() {
@@ -131,7 +124,7 @@ if (fs.existsSync(path.join(staticDir, "index.html"))) {
 
 // Ensure tables on first request (non-blocking).
 ensureTables().catch((e: any) =>
-  console.error("[MinimalServer] ensureTables failed:", e && e.message)
+  console.error("[Server] ensureTables failed:", e && e.message)
 );
 
 export default app;
