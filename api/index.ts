@@ -54,9 +54,12 @@ app.use(express.json({ limit: "50mb" }));
 // Products (public)
 app.get("/api/products", async (_req, res) => {
   try {
-    const { rows } = await pool.query(
-      "SELECT id, title, image_url, price_cents, category, description, in_stock FROM products ORDER BY id"
-    );
+    const { rows } = await Promise.race([
+      pool.query(
+        "SELECT id, title, image_url, price_cents, category, description, in_stock FROM products ORDER BY id"
+      ),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error("db timeout")), 20000)),
+    ]);
     res.json({ products: rows });
   } catch (e: any) {
     res.status(500).json({ error: "db: " + (e && e.message) });
