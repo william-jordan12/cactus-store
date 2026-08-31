@@ -190,8 +190,9 @@ async function startServer() {
 }
 
 // Only auto-start when running directly (not when imported as a module,
-// e.g. not when Vercel imports `createApp` from this file).
-if (process.argv[1] && import.meta.url === process.argv[1]) {
+// e.g. not when Vercel imports `createApp` from this file). Never bind a
+// listening port on serverless (Vercel sets process.env.VERCEL).
+if (!process.env.VERCEL && process.argv[1] && import.meta.url === process.argv[1]) {
   startServer().catch(console.error);
 }
 
