@@ -1,58 +1,29 @@
-export default async function handler(
-  req: any,
-  res: any
-) {
-  const url = req.url || "";
-  if (url.startsWith("/probe")) {
+import { createApp } from "../server/_core/index";
+
+/**
+ * Vercel serverless entry point.
+ *
+ * Import the server source directly and run the Express app as a (req, res)
+ * handler. Vercel's @vercel/node compiles TypeScript and installs node_modules,
+ * so this needs no manual bundling. The app is created lazily and cached.
+ */
+let appPromise: ReturnType<typeof createApp> | null = null;
+
+export default async function handler(req: any, res: any) {
+  if ((req.url || "").startsWith("/probe")) {
     res.status(200).send("PROBE OK " + new Date().toISOString());
     return;
   }
-  if (url.startsWith("/boot")) {
-    try {
-      const m = await import("../dist/index.js");
-      res.status(200).send(
-        "BOOT: module-loaded, has default=" + typeof m?.default
-      );
-      return;
-    } catch (e) {
-      res.status(500).send("BOOT IMPORT ERR: " + (e && e.stack ? e.stack : String(e)));
-      return;
-    }
-  }
-  const mod: any = await import("../dist/index.js");
-  let appPromise = mod.__testapp as Promise<any> | null;
   if (!appPromise) {
-    try {
-      appPromise = mod.default();
-      mod.__testapp = appPromise;
-    } catch (e) {
-      res.status(500).send("CREATE APP SYNC ERR: " + (e && e.stack ? e.stack : String(e)));
-      return;
-    }
+    appPromise = createApp();
   }
-  let app;
+  const app = await appPromise;
   try {
-    app = await Promise.race([
-      appPromise,
-      new Promise((_, rej) => setTimeout(() => rej(new Error("createApp timeout 25s")), 25000)),
-    ]);
-  } catch (e) {
-    res.status(500).send("CREATE APP ERR: " + (e && e.stack ? e.stack : String(e)));
-    return;
-  }
-  try {
-    app.use((err: any, _req: any, _res: any, next: any) => {
-      if (res.headersSent) return next(err);
-      try {
-        res.status(500).send("APP ERR: " + (err && err.stack ? err.stack : String(err)));
-      } catch {
-        res.status(500).end();
-      }
-    });
     app(req, res);
-  } catch (e) {
+  } catch (err) {
+    const msg = err instanceof Error ? (err.stack || err.message) : String(err);
     try {
-      res.status(500).send("HANDLER ERR: " + (e && e.stack ? e.stack : String(e)));
+      res.status(500).send("APP ERR: " + msg);
     } catch {
       res.status(500).end();
     }
