@@ -1,13 +1,13 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": "dist/index.js,dist/public/**"
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node",
+      "config": { "includeFiles": "dist/public/**" }
     }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.ts" },
-    { "source": "/sitemap.xml", "destination": "/api/index.ts" },
-    { "source": "/(.*)", "destination": "/api/index.ts" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/api/index.ts" }
   ]
 }
