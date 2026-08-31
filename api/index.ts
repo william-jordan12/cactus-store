@@ -1,17 +1,38 @@
+import type { Express } from "express";
 import createApp from "../dist/index.js";
 
 /**
- * Vercel serverless entry point.
- *
- * This imports the pre-built server bundle (dist/index.js, produced by
- * `build:server`) so the function uses the exact same compiled code as
- * Render/local. Dependencies (express, pg, drizzle, etc.) are resolved from
- * node_modules, which Vercel installs automatically from package.json.
+ * Vercel serverless entry point (single-function Express app).
  *
  * The app is created lazily and cached so it is reused across warm invocations.
+ * Errors during app creation are written to the raw response so they are
+ * visible instead of silently returning a blank 500.
  */
-export default // @ts-expect-error Vercel accepts an async default export
-async function handler() {
-  const app = await createApp();
-  return app;
+let appPromise: Promise<Express> | null = null;
+
+async function getApp(): Promise<Express> {
+  if (!appPromise) {
+    appPromise = createApp().catch((err) => {
+      appPromise = null;
+      throw err;
+    });
+  }
+  return appPromise;
+}
+
+export default async function handler(
+  req: any,
+  res: { status: (n: number) => any; send: (b: unknown) => void }
+) {
+  try {
+    const app = await getApp();
+    return app;
+  } catch (err) {
+    const msg = err instanceof Error ? (err.stack || err.message) : String(err);
+    try {
+      res.status(500).send("BOOT ERROR:\n" + msg);
+    } catch {
+      res.status(500).send("BOOT ERROR (could not render)");
+    }
+  }
 }
