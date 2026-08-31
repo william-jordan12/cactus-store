@@ -1,15 +1,14 @@
-import { createApp } from "../server/_core/index";
+import createApp from "../dist/index.js";
 
 /**
  * Vercel serverless entry point.
  *
- * Vercel's @vercel/node runtime supports using an Express app as the default
- * export of an api/ function. All traffic (API + SPA) is routed here via
- * vercel.json, and the app serves both the JSON/API endpoints and the built
- * static frontend.
+ * This imports the pre-built server bundle (dist/index.js, produced by
+ * `build:server`) so the function uses the exact same compiled code as
+ * Render/local. Dependencies (express, pg, drizzle, etc.) are resolved from
+ * node_modules, which Vercel installs automatically from package.json.
  *
- * The app is created lazily and cached in the module scope so it is reused
- * across warm invocations on Vercel's serverless runtime.
+ * The app is created lazily and cached so it is reused across warm invocations.
  */
 export default // @ts-expect-error Vercel accepts an async default export
 async function handler() {
