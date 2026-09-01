@@ -1,5 +1,5 @@
 import { and, desc, eq, gt, or } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle } from "drizzle-orm/neon-http";
 import {
   categories,
   chatMessages,
@@ -20,9 +20,29 @@ import {
   visits,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { neon as createNeon } from "@neondatabase/serverless";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+// For requests, we don't hold a persistent pool. `_pool` is kept as a shared
+// Neon HTTP query client (fetch-based, serverless-safe) for raw SQL.
 let _pool: any = null;
+
+/** Normalize a DATABASE_URL for the Neon HTTP driver (strip query params + -pooler host). */
+function neonConnectionString(url: string): string {
+  const base = url.split("?")[0] || url;
+  return base.replace("-pooler.", ".");
+}
+
+function getPool(): any {
+  if (!_pool && process.env.DATABASE_URL) {
+    // fullResults keeps the pg-style `{ rows, ... }` shape that both drizzle
+    // (neon-http) and the raw conn.query() SQL migrations here rely on.
+    _pool = createNeon(neonConnectionString(process.env.DATABASE_URL), {
+      fullResults: true,
+    });
+  }
+  return _pool;
+}
 
 /** Race a promise against a timeout so a sleeping managed DB can't block us. */
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -35,12 +55,13 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/** Ping the pool until the DB responds, handling managed-DB sleep/wake cycles. */
+/** Ping the DB until it responds, handling managed-DB sleep/wake cycles. */
 async function ensurePoolHealthy() {
-  if (!_pool) return;
+  const pool = getPool();
+  if (!pool) return;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      await withTimeout(_pool.query("SELECT 1"), 25000);
+      await withTimeout(pool.query("SELECT 1"), 25000);
       return;
     } catch (e: any) {
       console.warn(`[Database] Connection retry ${attempt + 1}:`, e?.message);
@@ -53,18 +74,8 @@ async function ensurePoolHealthy() {
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      const { Pool } = await import("pg");
-      _pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
-        max: 5,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 30000,
-        query_timeout: 30000,
-        keepAlive: true,
-      });
+      const conn = getPool();
       await ensurePoolHealthy();
-      const conn = _pool;
       _db = drizzle(conn, { schema: undefined });
       // Auto-migrate: ensure core tables exist (recreate if DB was wiped)
       try {
@@ -260,22 +271,18 @@ export async function getDb() {
   return _db;
 }
 
-/** Returns a raw pg client from the shared pool (used by bootstrap/seeding). */
+/** Returns a Neon HTTP query client (fetch-based, no persistent connection).
+ * Compatible with pg-style `conn.query(sql, params)` returning `{ rows }`. */
 export async function getRawConnection() {
   if (!process.env.DATABASE_URL) return null;
   try {
     await ensurePoolHealthy();
-    if (_pool) return await withTimeout(_pool.connect(), 25000);
-    const { Pool } = await import("pg");
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-      max: 3,
-      connectionTimeoutMillis: 30000,
-      query_timeout: 30000,
-    });
-    _pool = pool;
-    return await withTimeout(pool.connect(), 25000);
+    const pool = getPool();
+    if (!pool) return null;
+    return {
+      query: (text: string, params?: unknown[]) => pool.query(text, params as any),
+      release() {},
+    };
   } catch (e) {
     console.warn("[Database] getRawConnection failed:", e);
     return null;
