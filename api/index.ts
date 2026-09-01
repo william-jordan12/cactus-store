@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
 import { Pool } from "@neondatabase/serverless";
@@ -46,7 +46,7 @@ const app = express();
 app.use(express.json({ limit: "50mb" }));
 
 // Products (public)
-app.get("/api/products", async (_req, res) => {
+app.get("/api/products", async (_req: Request, res: Response) => {
   try {
     const { rows } = await Promise.race([
       pool.query(
@@ -63,7 +63,7 @@ app.get("/api/products", async (_req, res) => {
 });
 
 // DB connectivity check (diagnostic)
-app.get("/api/dbcheck", async (_req, res) => {
+app.get("/api/dbcheck", async (_req: Request, res: Response) => {
   try {
     const { rows } = await Promise.race([
       pool.query("SELECT 1 as ok"),
@@ -78,7 +78,7 @@ app.get("/api/dbcheck", async (_req, res) => {
 });
 
 // Admin login
-app.post("/api/admin/login", (req, res) => {
+app.post("/api/admin/login", (req: Request, res: Response) => {
   const { password } = req.body || {};
   if (password === ADMIN_PASSWORD) {
     res.json({ success: true, token: "admin" });
@@ -88,7 +88,7 @@ app.post("/api/admin/login", (req, res) => {
 });
 
 // Admin create product
-app.post("/api/admin/products", async (req, res) => {
+app.post("/api/admin/products", async (req: Request, res: Response) => {
   const auth = req.headers.authorization || "";
   if (auth !== "Bearer admin") {
     return res.status(401).json({ error: "unauthorized" });
@@ -110,9 +110,11 @@ app.post("/api/admin/products", async (req, res) => {
 const staticDir = findStaticDir();
 if (fs.existsSync(path.join(staticDir, "index.html"))) {
   app.use(express.static(staticDir));
-  app.use("*", (_req, res) => res.sendFile(path.join(staticDir, "index.html")));
+  app.use("*", (_req: Request, res: Response) =>
+    res.sendFile(path.join(staticDir, "index.html"))
+  );
 } else {
-  app.get("/", (_req, res) =>
+  app.get("/", (_req: Request, res: Response) =>
     res
       .status(200)
       .set("Content-Type", "text/html")
