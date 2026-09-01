@@ -27,19 +27,28 @@ let _db: ReturnType<typeof drizzle> | null = null;
 // Neon HTTP query client (fetch-based, serverless-safe) for raw SQL.
 let _pool: any = null;
 
-/** Normalize a DATABASE_URL for the Neon HTTP driver (strip query params + -pooler host). */
+/** Pick the best available Postgres connection string (Vercel provides
+ * POSTGRES_URL / POSTGRES_URL_NON_POOLING / DATABASE_URL). */
+function dbUrl(): string | undefined {
+  return (
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_URL ||
+    process.env.DATABASE_URL
+  );
+}
+
+/** Normalize a connection string for the Neon HTTP driver (strip query params + -pooler host). */
 function neonConnectionString(url: string): string {
   const base = url.split("?")[0] || url;
   return base.replace("-pooler.", ".");
 }
 
 function getPool(): any {
-  if (!_pool && process.env.DATABASE_URL) {
+  const url = dbUrl();
+  if (!_pool && url) {
     // fullResults keeps the pg-style `{ rows, ... }` shape that both drizzle
     // (neon-http) and the raw conn.query() SQL migrations here rely on.
-    _pool = createNeon(neonConnectionString(process.env.DATABASE_URL), {
-      fullResults: true,
-    });
+    _pool = createNeon(neonConnectionString(url), { fullResults: true });
   }
   return _pool;
 }
@@ -72,7 +81,7 @@ async function ensurePoolHealthy() {
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!_db && dbUrl()) {
     try {
       const conn = getPool();
       await ensurePoolHealthy();
@@ -274,7 +283,7 @@ export async function getDb() {
 /** Returns a Neon HTTP query client (fetch-based, no persistent connection).
  * Compatible with pg-style `conn.query(sql, params)` returning `{ rows }`. */
 export async function getRawConnection() {
-  if (!process.env.DATABASE_URL) return null;
+  if (!dbUrl()) return null;
   try {
     await ensurePoolHealthy();
     const pool = getPool();
