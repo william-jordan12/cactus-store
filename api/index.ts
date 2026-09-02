@@ -24,6 +24,25 @@ function findStaticDir(): string {
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 
+app.get("/api/health", (_req: Request, res: any) =>
+  res.json({ ok: true })
+);
+
+app.get("/api/dbcheck", async (_req: Request, res: any) => {
+  try {
+    const { HttpPgPool } = await import("../server/_core/pgHttpClient");
+    const url =
+      process.env.POSTGRES_URL_NON_POOLING ||
+      process.env.POSTGRES_URL ||
+      process.env.DATABASE_URL;
+    const pool = new HttpPgPool(url || "");
+    const r = await pool.query("SELECT COUNT(*) AS c FROM products");
+    res.json({ ok: true, count: (r.rows as any[])[0]?.c, hasUrl: !!url });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: (e as Error).message });
+  }
+});
+
 app.use(
   "/api/trpc",
   createExpressMiddleware({
@@ -47,3 +66,8 @@ if (fs.existsSync(path.join(staticDir, "index.html"))) {
 }
 
 export default app;
+
+export function errorHandler(err: any, _req: Request, res: any, next: any) {
+  console.error("unhandled error:", err?.message);
+  res.status(500).json({ ok: false, error: String(err?.message || err) });
+}
