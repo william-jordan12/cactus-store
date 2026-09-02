@@ -1,5 +1,5 @@
 import { and, desc, eq, gt, or } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle } from "drizzle-orm/node-postgres";
 import {
   categories,
   chatMessages,
@@ -20,11 +20,10 @@ import {
   visits,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
-import { neon as createNeon } from "@neondatabase/serverless";
+import { HttpPgPool } from './_core/pgHttpClient';
 
 let _db: ReturnType<typeof drizzle> | null = null;
-// For requests, we don't hold a persistent pool. `_pool` is kept as a shared
-// Neon HTTP query client (fetch-based, serverless-safe) for raw SQL.
+// fetch-based, pg-compatible pool (no socket driver) that works on serverless.
 let _pool: any = null;
 
 /** Pick the best available Postgres connection string (Vercel provides
@@ -37,20 +36,19 @@ function dbUrl(): string | undefined {
   );
 }
 
-/** Normalize a connection string for the Neon HTTP driver (strip query params + -pooler host). */
-function neonConnectionString(url: string): string {
-  const base = url.split("?")[0] || url;
-  return base.replace("-pooler.", ".");
-}
-
 function getPool(): any {
   const url = dbUrl();
   if (!_pool && url) {
-    // fullResults keeps the pg-style `{ rows, ... }` shape that both drizzle
-    // (neon-http) and the raw conn.query() SQL migrations here rely on.
-    _pool = createNeon(neonConnectionString(url), { fullResults: true });
+    _pool = new HttpPgPool(url);
   }
   return _pool;
+}
+
+/** Run a raw SQL query through the fetch-based pool, with a timeout. */
+async function rawQuery(sqlText: string, params?: unknown[]) {
+  const pool = getPool();
+  if (!pool) throw new Error("Database not available");
+  return withTimeout(pool.query(sqlText, params ?? []), 25000);
 }
 
 /** Race a promise against a timeout so a sleeping managed DB can't block us. */
@@ -375,9 +373,10 @@ export async function getUserByOpenId(openId: string) {
 // ---------------------------------------------------------------------------
 
 export async function listCategories() {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(categories).orderBy(categories.name);
+  const rows = (await rawQuery(
+    `SELECT id, name, "createdAt" FROM categories ORDER BY name`
+  )).rows as any[];
+  return rows.map(r => ({ id: r.id, name: r.name, createdAt: new Date(r.createdAt) }));
 }
 
 export async function createCategory(data: InsertCategory) {
@@ -406,53 +405,67 @@ export async function deleteCategory(id: number) {
 // ---------------------------------------------------------------------------
 
 export async function listProducts() {
-  const db = await getDb();
-  if (!db) return [];
-  // Select explicit columns, excluding the heavy `images` MEDIUMTEXT column,
-  // which made the public store.products query time out during serialization.
-  return db
-    .select({
-      id: products.id,
-      title: products.title,
-      imageUrl: products.imageUrl,
-      description: products.description,
-      priceCents: products.priceCents,
-      priceEndCents: products.priceEndCents,
-      inStock: products.inStock,
-      isVariable: products.isVariable,
-      variants: products.variants,
-      categoryId: products.categoryId,
-      createdAt: products.createdAt,
-      updatedAt: products.updatedAt,
-    })
-    .from(products)
-    .orderBy(desc(products.createdAt));
+  const rows = (await rawQuery(
+    `SELECT id, title, "imageUrl", description, "priceCents", "priceEndCents", "inStock", "isVariable", variants, "categoryId", "createdAt", "updatedAt" FROM products ORDER BY "createdAt" DESC`
+  )).rows as any[];
+  return rows.map(r => ({
+    id: r.id,
+    title: r.title,
+    imageUrl: r.imageUrl,
+    description: r.description,
+    priceCents: r.priceCents,
+    priceEndCents: r.priceEndCents,
+    inStock: r.inStock,
+    isVariable: r.isVariable,
+    variants: r.variants,
+    categoryId: r.categoryId,
+    createdAt: new Date(r.createdAt),
+    updatedAt: new Date(r.updatedAt),
+  }));
 }
 
 /** Lightweight product list for admin (excludes heavy images/variants columns). */
 export async function listProductsAdmin() {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select({
-    id: products.id,
-    title: products.title,
-    imageUrl: products.imageUrl,
-    priceCents: products.priceCents,
-    priceEndCents: products.priceEndCents,
-    inStock: products.inStock,
-    isVariable: products.isVariable,
-    categoryId: products.categoryId,
-    description: products.description,
-    createdAt: products.createdAt,
-    updatedAt: products.updatedAt,
-  }).from(products).orderBy(desc(products.createdAt));
+  const rows = (await rawQuery(
+    `SELECT id, title, "imageUrl", "priceCents", "priceEndCents", "inStock", "isVariable", "categoryId", description, "createdAt", "updatedAt" FROM products ORDER BY "createdAt" DESC`
+  )).rows as any[];
+  return rows.map(r => ({
+    id: r.id,
+    title: r.title,
+    imageUrl: r.imageUrl,
+    priceCents: r.priceCents,
+    priceEndCents: r.priceEndCents,
+    inStock: r.inStock,
+    isVariable: r.isVariable,
+    categoryId: r.categoryId,
+    description: r.description,
+    createdAt: new Date(r.createdAt),
+    updatedAt: new Date(r.updatedAt),
+  }));
 }
 
 export async function getProductById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const rows = await db.select().from(products).where(eq(products.id, id)).limit(1);
-  return rows[0];
+  const rows = (await rawQuery(
+    `SELECT * FROM products WHERE id = $1 LIMIT 1`,
+    [id]
+  )).rows as any[];
+  const r = rows[0];
+  if (!r) return undefined;
+  return {
+    id: r.id,
+    title: r.title,
+    imageUrl: r.imageUrl,
+    images: r.images ?? null,
+    priceCents: r.priceCents,
+    priceEndCents: r.priceEndCents,
+    inStock: r.inStock,
+    isVariable: r.isVariable,
+    variants: r.variants ?? null,
+    categoryId: r.categoryId,
+    description: r.description,
+    createdAt: new Date(r.createdAt),
+    updatedAt: new Date(r.updatedAt),
+  };
 }
 
 export async function createProduct(data: InsertProduct) {
@@ -546,9 +559,7 @@ export async function deleteOrder(id: number) {
 // ---------------------------------------------------------------------------
 
 export async function getAllSettings(): Promise<Record<string, string>> {
-  const db = await getDb();
-  if (!db) return {};
-  const rows = await db.select().from(settings);
+  const rows = (await rawQuery(`SELECT key, value FROM settings`)).rows as any[];
   const map: Record<string, string> = {};
   for (const row of rows) {
     map[row.key] = row.value ?? "";
