@@ -4,10 +4,14 @@ import { initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { z } from "zod";
+import { HttpPgPool } from "../server/_core/pgHttpClient";
 
 const t = initTRPC.create({ transformer: superjson });
 const r = t.router({
-  ping: t.procedure.input(z.object({ x: z.number().optional() })).query(() => ({ ok: true })),
+  ping: t.procedure.input(z.object({ x: z.number().optional() })).query(() => {
+    const pool = new HttpPgPool("x");
+    return { ok: true, hasPool: typeof pool.query === "function" };
+  }),
 });
 
 const app = express();
