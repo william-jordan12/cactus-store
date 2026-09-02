@@ -4,7 +4,6 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "./store";
-import { createContext } from "@trpc/server";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,11 +35,11 @@ app.use(
 const staticDir = findStaticDir();
 if (fs.existsSync(path.join(staticDir, "index.html"))) {
   app.use(express.static(staticDir));
-  app.use("*", (_req: Request, res: Response) =>
+  app.use("*", (_req: Request, res: Response<unknown>) =>
     res.sendFile(path.join(staticDir, "index.html"))
   );
 } else {
-  app.get("/", (_req: Request, res: Response) =>
+  app.get("/", (_req: Request, res: Response<unknown>) =>
     res.status(200).set("Content-Type", "text/html").send(
       "<!doctype html><html><head><title>Peyote Seeds Farm</title></head><body><h1>Peyote Seeds Farm</h1></body></html>"
     )
