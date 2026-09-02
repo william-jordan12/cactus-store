@@ -1,9 +1,13 @@
 import express from "express";
 import type { Request } from "express";
-import { HttpPgPool } from "./pgClient";
 
 const app = express();
-app.get("/api/health", (_req: Request, res: any) =>
-  res.json({ ok: true, hasPool: typeof HttpPgPool === "function" })
-);
+app.get("/api/health", async (_req: Request, res: any) => {
+  try {
+    const r = await fetch("https://example.com");
+    res.json({ ok: true, fetchStatus: r.status });
+  } catch (e) {
+    res.json({ ok: false, err: (e as Error).message });
+  }
+});
 export default app;
