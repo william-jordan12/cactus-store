@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { HttpPgPool } from "../server/_core/pgHttpClient";
+import { HttpPgPool } from "./pgClient";
 
 const t = initTRPC.create({ transformer: superjson });
 const publicProcedure = t.procedure;
