@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Request } from "express";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -35,11 +35,11 @@ app.use(
 const staticDir = findStaticDir();
 if (fs.existsSync(path.join(staticDir, "index.html"))) {
   app.use(express.static(staticDir));
-  app.use("*", (_req: Request, res: Response<unknown>) =>
+  app.use("*", (_req: Request, res: any) =>
     res.sendFile(path.join(staticDir, "index.html"))
   );
 } else {
-  app.get("/", (_req: Request, res: Response<unknown>) =>
+  app.get("/", (_req: Request, res: any) =>
     res.status(200).set("Content-Type", "text/html").send(
       "<!doctype html><html><head><title>Peyote Seeds Farm</title></head><body><h1>Peyote Seeds Farm</h1></body></html>"
     )
