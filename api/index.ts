@@ -4,6 +4,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { z } from "zod";
+import { SignJWT, jwtVerify } from "jose";
 
 // ---------- DB client (plain fetch to Neon SQL-over-HTTP) ----------
 interface HttpPgResult { rows: any[]; rowCount: number | null; fields: { name: string }[]; }
@@ -93,8 +94,111 @@ async function getAllSettings(): Promise<Record<string, string>> {
   return all;
 }
 
-const t = initTRPC.create({ transformer: superjson });
+// ---------- Admin auth (password login -> signed JWT cookie) ----------
+const COOKIE_NAME = "app_session_id";
+const ADMIN_OPEN_ID = "admin-password-user";
+const APP_ID = process.env.VITE_APP_ID || "cactus-store";
+
+type SessionClaims = { openId: string; appId: string; name: string };
+
+function jwtSecret(): Uint8Array {
+  return new TextEncoder().encode(process.env.JWT_SECRET ?? "");
+}
+
+function parseCookies(header?: string): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!header) return map;
+  for (const part of header.split(";")) {
+    const idx = part.indexOf("=");
+    if (idx === -1) continue;
+    const key = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1).trim();
+    if (key) map.set(key, decodeURIComponent(value));
+  }
+  return map;
+}
+
+async function signSessionToken(): Promise<string> {
+  const issuedAt = Date.now();
+  const exp = Math.floor((issuedAt + 1000 * 60 * 60 * 24 * 365) / 1000);
+  return new SignJWT({ openId: ADMIN_OPEN_ID, appId: APP_ID, name: "Admin" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt(Math.floor(issuedAt / 1000))
+    .setExpirationTime(exp)
+    .sign(jwtSecret());
+}
+
+async function verifySessionToken(token: string): Promise<SessionClaims | null> {
+  try {
+    const { payload } = await jwtVerify(token, jwtSecret(), { algorithms: ["HS256"] });
+    const { openId, appId, name } = payload as Record<string, unknown>;
+    if (
+      typeof openId !== "string" ||
+      typeof appId !== "string" ||
+      typeof name !== "string" ||
+      !openId ||
+      !appId ||
+      !name
+    ) {
+      return null;
+    }
+    return { openId, appId, name };
+  } catch {
+    return null;
+  }
+}
+
+function getRequestToken(req: Request): string | null {
+  const cookies = parseCookies(req.headers.cookie);
+  const fromCookie = cookies.get(COOKIE_NAME);
+  if (fromCookie) return fromCookie;
+  const authHeader = req.headers.authorization;
+  if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7);
+  }
+  return null;
+}
+
+function adminUserPayload() {
+  const now = new Date();
+  return {
+    id: -1,
+    openId: ADMIN_OPEN_ID,
+    name: "Admin",
+    email: null,
+    loginMethod: null,
+    role: "admin",
+    createdAt: now,
+    updatedAt: now,
+    lastSignedIn: now,
+  };
+}
+
+async function authenticateRequest(req: Request): Promise<Record<string, unknown> | null> {
+  const token = getRequestToken(req);
+  if (!token) return null;
+  const session = await verifySessionToken(token);
+  if (!session) return null;
+  if (session.openId !== ADMIN_OPEN_ID) return null;
+  return adminUserPayload();
+}
+
+async function createContext({ req, res }: { req: Request; res: any }) {
+  const user = (await authenticateRequest(req)) as any;
+  return { req, res, user };
+}
+
+const t = initTRPC
+  .context<{ req: Request; res: any; user: Record<string, unknown> | null }>()
+  .create({ transformer: superjson });
 const proc = t.procedure;
+
+const adminProcedure = proc.use(({ ctx, next }) => {
+  if (!ctx.user || ctx.user.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+  }
+  return next({ ctx });
+});
 
 export const appRouter = t.router({
   store: t.router({
@@ -195,6 +299,51 @@ export const appRouter = t.router({
       }),
     trackVisit: proc.input(z.object({ visitorId: z.string().trim().min(1).max(64), path: z.string().trim().max(500).optional().default("/") })).mutation(async () => ({ recorded: true })),
   }),
+  auth: t.router({
+    me: proc.query(({ ctx }) => (ctx.user as any) ?? null),
+    logout: proc.mutation(({ ctx }) => {
+      if (ctx.res && typeof ctx.res.clearCookie === "function") {
+        ctx.res.clearCookie(COOKIE_NAME, { path: "/", httpOnly: true, sameSite: "none", secure: true, maxAge: -1 });
+      }
+      return { success: true } as const;
+    }),
+  }),
+  admin: t.router({
+    orders: t.router({
+      list: adminProcedure.query(async () => {
+        const allOrders = (await q<any>(`SELECT id, "customerName","customerEmail","customerPhone","shippingAddress","billingAddress","paymentMethod","totalCents","paymentStatus","stripeSessionId","createdAt","updatedAt" FROM orders ORDER BY "createdAt" DESC`)).map(r => ({
+          id: r.id,
+          customerName: r.customerName,
+          customerEmail: r.customerEmail,
+          customerPhone: r.customerPhone,
+          shippingAddress: r.shippingAddress,
+          billingAddress: r.billingAddress,
+          paymentMethod: r.paymentMethod,
+          totalCents: r.totalCents,
+          paymentStatus: r.paymentStatus,
+          stripeSessionId: r.stripeSessionId,
+          createdAt: new Date(r.createdAt),
+          updatedAt: new Date(r.updatedAt),
+        }));
+        const allItems = await q<any>(`SELECT id, "orderId", "productId", title, "unitPriceCents", quantity FROM "orderItems"`);
+        const itemsByOrder = new Map<number, any[]>();
+        for (const it of allItems) {
+          const list = itemsByOrder.get(it.orderId) ?? [];
+          list.push({ id: it.id, orderId: it.orderId, productId: it.productId, title: it.title, unitPriceCents: it.unitPriceCents, quantity: it.quantity });
+          itemsByOrder.set(it.orderId, list);
+        }
+        for (const o of allOrders) o.items = itemsByOrder.get(o.id) ?? [];
+        return allOrders;
+      }),
+      delete: adminProcedure
+        .input(z.object({ id: z.number().int().positive() }))
+        .mutation(async ({ input }) => {
+          await pool().query(`DELETE FROM "orderItems" WHERE "orderId" = $1`, [input.id]);
+          await pool().query(`DELETE FROM orders WHERE id = $1`, [input.id]);
+          return { success: true };
+        }),
+    }),
+  }),
 });
 export type AppRouter = typeof appRouter;
 
@@ -202,5 +351,37 @@ export type AppRouter = typeof appRouter;
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.get("/api/health", (_req: Request, res: any) => res.json({ ok: true }));
-app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext: () => ({}) }));
+
+app.post("/api/admin/login", async (req: Request, res: any) => {
+  try {
+    const { password } = req.body ?? {};
+    if (!process.env.ADMIN_PASSWORD) {
+      res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
+      return;
+    }
+    if (password !== process.env.ADMIN_PASSWORD) {
+      res.status(401).json({ error: "Invalid password" });
+      return;
+    }
+    if (!process.env.JWT_SECRET) {
+      res.status(500).json({ error: "JWT_SECRET not configured" });
+      return;
+    }
+    const sessionToken = await signSessionToken();
+    const isSecure = !!(req.headers["x-forwarded-proto"] || "").toLowerCase().includes("https") || req.protocol === "https";
+    res.cookie(COOKIE_NAME, sessionToken, {
+      httpOnly: true,
+      path: "/",
+      sameSite: "none",
+      secure: true,
+      maxAge: 1000 * 60 * 60 * 24 * 365,
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[Admin Login] Failed", error);
+    res.status(500).json({ error: "Login failed: " + ((error as Error).message ?? String(error)) });
+  }
+});
+
+app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
 export default app;
