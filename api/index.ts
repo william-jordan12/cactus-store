@@ -84,6 +84,14 @@ function mapProduct(r: any) {
 
 const CART_ITEM = z.object({ productId: z.number().int().positive(), quantity: z.number().int().min(1).max(999) });
 const PAYMENT_METHODS = ["Cash App","PayPal","Venmo","Zelle","Bitcoin","Apple Pay","Chime","Bank transfer","Cryptocurrency","Stripe"];
+const MINIMUM_ORDER_CENTS = 10000;
+
+async function getAllSettings(): Promise<Record<string, string>> {
+  const rows = await q<any>(`SELECT key, value FROM settings`);
+  const all: Record<string, string> = {};
+  for (const row of rows) all[row.key] = row.value ?? "";
+  return all;
+}
 
 const t = initTRPC.create({ transformer: superjson });
 const proc = t.procedure;
@@ -130,6 +138,61 @@ export const appRouter = t.router({
         id: r.id, authorName: r.authorName, rating: r.rating, content: r.content, createdAt: new Date(r.createdAt),
       }))
     ),
+    placeOrder: proc
+      .input(z.object({
+        items: z.array(CART_ITEM).min(1),
+        customerName: z.string().trim().min(1).max(255),
+        customerEmail: z.string().trim().email().max(320),
+        customerPhone: z.string().trim().min(5).max(64),
+        shippingAddress: z.string().trim().min(5).max(1000),
+        billingAddress: z.string().trim().min(5).max(1000),
+        paymentMethod: z.enum(PAYMENT_METHODS as [string, ...string[]]),
+      }))
+      .mutation(async ({ input }) => {
+        const allSettings = await getAllSettings();
+        const lineItems: { productId: number; title: string; unitPriceCents: number; quantity: number }[] = [];
+        for (const item of input.items) {
+          const rows = await q<any>(`SELECT id, title, "priceCents" FROM products WHERE id = $1 LIMIT 1`, [item.productId]);
+          const p = rows[0];
+          if (!p) throw new TRPCError({ code: "NOT_FOUND", message: `Product ${item.productId} no longer exists` });
+          lineItems.push({ productId: p.id, title: p.title, unitPriceCents: p.priceCents, quantity: item.quantity });
+        }
+        const totalCents = lineItems.reduce((s, li) => s + li.unitPriceCents * li.quantity, 0);
+        if (totalCents < MINIMUM_ORDER_CENTS) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum order amount is $100.00" });
+        }
+        const res = await pool().query(
+          `INSERT INTO orders ("customerName","customerEmail","customerPhone","shippingAddress","billingAddress","paymentMethod","totalCents","paymentStatus","stripeSessionId","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',NULL,now(),now()) RETURNING id`,
+          [input.customerName, input.customerEmail, input.customerPhone, input.shippingAddress, input.billingAddress, input.paymentMethod, totalCents]
+        );
+        const orderId = (res.rows as any[])[0].id;
+        for (const li of lineItems) {
+          await pool().query(
+            `INSERT INTO "orderItems" ("orderId","productId",title,"unitPriceCents",quantity) VALUES ($1,$2,$3,$4,$5)`,
+            [orderId, li.productId, li.title, li.unitPriceCents, li.quantity]
+          );
+        }
+        return {
+          orderId,
+          totalCents,
+          items: lineItems,
+          contactEmail: allSettings.contactEmail || "peyoteseedsfarm@gmail.com",
+          paymentMethod: input.paymentMethod,
+        };
+      }),
+    submitReview: proc
+      .input(z.object({
+        authorName: z.string().trim().min(1).max(191),
+        rating: z.number().int().min(1).max(5),
+        content: z.string().trim().min(5).max(2000),
+      }))
+      .mutation(async ({ input }) => {
+        const res = await pool().query(
+          `INSERT INTO reviews ("authorName",rating,content,status,"createdAt") VALUES ($1,$2,$3,'pending',now()) RETURNING id`,
+          [input.authorName, input.rating, input.content]
+        );
+        return { id: (res.rows as any[])[0].id };
+      }),
     trackVisit: proc.input(z.object({ visitorId: z.string().trim().min(1).max(64), path: z.string().trim().max(500).optional().default("/") })).mutation(async () => ({ recorded: true })),
   }),
 });
