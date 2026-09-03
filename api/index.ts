@@ -148,7 +148,7 @@ async function verifySessionToken(token: string): Promise<SessionClaims | null> 
   }
 }
 
-function getRequestToken(req: Request): string | null {
+function getRequestToken(req: any): string | null {
   const cookies = parseCookies(req.headers.cookie);
   const fromCookie = cookies.get(COOKIE_NAME);
   if (fromCookie) return fromCookie;
@@ -174,7 +174,7 @@ function adminUserPayload() {
   };
 }
 
-async function authenticateRequest(req: Request): Promise<Record<string, unknown> | null> {
+async function authenticateRequest(req: any): Promise<Record<string, unknown> | null> {
   const token = getRequestToken(req);
   if (!token) return null;
   const session = await verifySessionToken(token);
@@ -183,7 +183,7 @@ async function authenticateRequest(req: Request): Promise<Record<string, unknown
   return adminUserPayload();
 }
 
-async function createContext({ req, res }: { req: Request; res: any }) {
+async function createContext({ req, res }: { req: any; res: any }) {
   const user = (await authenticateRequest(req)) as any;
   return { req, res, user };
 }
@@ -311,7 +311,7 @@ export const appRouter = t.router({
   admin: t.router({
     orders: t.router({
       list: adminProcedure.query(async () => {
-        const allOrders = (await q<any>(`SELECT id, "customerName","customerEmail","customerPhone","shippingAddress","billingAddress","paymentMethod","totalCents","paymentStatus","stripeSessionId","createdAt","updatedAt" FROM orders ORDER BY "createdAt" DESC`)).map(r => ({
+        const allOrders: any[] = (await q<any>(`SELECT id, "customerName","customerEmail","customerPhone","shippingAddress","billingAddress","paymentMethod","totalCents","paymentStatus","stripeSessionId","createdAt","updatedAt" FROM orders ORDER BY "createdAt" DESC`)).map(r => ({
           id: r.id,
           customerName: r.customerName,
           customerEmail: r.customerEmail,
@@ -352,7 +352,7 @@ const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.get("/api/health", (_req: Request, res: any) => res.json({ ok: true }));
 
-app.post("/api/admin/login", async (req: Request, res: any) => {
+app.post("/api/admin/login", async (req: any, res: any) => {
   try {
     const { password } = req.body ?? {};
     if (!process.env.ADMIN_PASSWORD) {
